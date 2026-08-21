@@ -93,7 +93,9 @@ Follow these principles:
 
 - Backend: Python / FastAPI
 - Database: PostgreSQL
-- Frontend: Web application
+- Frontend: React + TypeScript
+- Frontend Build Tool: Vite
+- Frontend Styling: Tailwind CSS
 - PDF generation: ReportLab
 - Excel generation: openpyxl
 - Production OS: Ubuntu Server
