@@ -212,3 +212,76 @@ Repository / Data Access
     |
     v
 PostgreSQL
+```
+
+## Foundation setup
+
+Phase 01 establishes only the cross-cutting application foundation: FastAPI, SQLAlchemy 2.x, Alembic, JWT/password-security primitives, RBAC tables, and a React/TypeScript/Vite/Tailwind frontend. No Railway business modules have been implemented.
+
+### Local requirements
+
+- Python 3.14 and pip
+- Node.js 22+ and npm
+- PostgreSQL 16+ accessible locally or through the approved private network
+
+### Backend
+
+Create and activate a virtual environment, then install the backend and development dependencies:
+
+```bash
+cd backend
+python3.14 -m venv ../.venv
+source ../.venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Copy `.env.example` to `.env` at the repository root. Set `WCDMS_DATABASE_URL` to a PostgreSQL database and replace `WCDMS_JWT_SECRET_KEY` with a unique random secret of at least 32 characters. Do not commit `.env`.
+
+Run database migrations and start the API:
+
+```bash
+cd backend
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+The health endpoint is available at `http://127.0.0.1:8000/api/v1/health`.
+
+The initial SUPER-ADMIN must be created only after migrations have run, using the interactive command below. It reads the password from the terminal and refuses to run if any user already exists:
+
+```bash
+cd backend
+python -m app.scripts.bootstrap_super_admin --email admin@example.com
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+For a local development frontend, set `VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1` in an uncommitted `frontend/.env.local` file if the frontend is served separately from the API.
+
+### Checks
+
+```bash
+cd backend
+pytest
+ruff check .
+alembic check
+
+cd ../frontend
+npm run test
+npm run lint
+npm run build
+```
+
+## Current implementation status
+
+- Foundation: implemented
+- Authentication infrastructure: JWT, Argon2 password hashing, user/role/permission schema, and secure one-time SUPER-ADMIN bootstrap command
+- Business modules: not implemented
+- PostgreSQL migrations: authentication foundation only
