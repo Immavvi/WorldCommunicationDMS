@@ -15,6 +15,8 @@ import { ReceivingPage } from "./pages/ReceivingPage";
 import { ReceiptDetailPage } from "./pages/ReceiptDetailPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
+import { TaxInvoicesPage } from "./pages/TaxInvoicesPage";
+import { TaxInvoiceDetailPage } from "./pages/TaxInvoiceDetailPage";
 import { ProformaInvoicesPage } from "./pages/ProformaInvoicesPage";
 import { ProformaInvoiceDetailPage } from "./pages/ProformaInvoiceDetailPage";
 import { DispatchPage } from "./pages/DispatchPage";
@@ -42,6 +44,8 @@ export default function App() {
               <Route path="/supply-challans/:challanId" element={<ChallanDetailPage />} />
               <Route path="/proforma-invoices" element={<ProformaInvoicesPage />} />
               <Route path="/proforma-invoices/:piId" element={<ProformaInvoiceDetailPage />} />
+              <Route path="/tax-invoices" element={<TaxInvoicesPage />} />
+              <Route path="/tax-invoices/:invoiceId" element={<TaxInvoiceDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

@@ -73,6 +73,18 @@ vi.mock("../src/api/billing", () => ({
     grand_total: "118.00", amount_in_words: "Indian Rupees One Hundred Eighteen Only" }),
 }));
 
+vi.mock("../src/api/invoicing", () => ({
+  listInvoices: vi.fn().mockResolvedValue([]), getInvoiceablePosition: vi.fn().mockResolvedValue([]),
+  createInvoice: vi.fn(), updateInvoiceLine: vi.fn(), transitionInvoice: vi.fn(),
+  getInvoice: vi.fn().mockResolvedValue({ id: "inv-1", invoice_number: "INV-000001",
+    status: "SUBMITTED", customer_snapshot: { legal_name: "Railway Customer" },
+    organization_snapshot: {}, organization_gst_snapshot: {}, bill_to_snapshot: {}, ship_to_snapshot: {},
+    bank_snapshot: {}, lines: [], tax_mode: "INTRA_STATE", place_of_supply_state: "West Bengal",
+    place_of_supply_state_code: "19", due_date: "2026-09-26", cgst_amount: "9.00",
+    sgst_amount: "9.00", igst_amount: "0.00", grand_total: "118.00",
+    amount_in_words: "Indian Rupees One Hundred Eighteen Only" }),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -226,7 +238,7 @@ test("records acknowledgement from delivered Challan detail", async () => {
   expect(await screen.findByRole("heading", { name: "CH-000001" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Dispatched material" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Record acknowledgement" })).toBeInTheDocument();
-  expect(screen.queryByText(/rate|cost|tax|margin/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/purchase rate|vendor cost|margin/i)).not.toBeInTheDocument();
 });
 
 test("shows PI creation from eligible dispatched material without procurement costs", async () => {
@@ -245,5 +257,25 @@ test("shows backend-calculated PI totals and SUPER-ADMIN approval", async () => 
   render(<App />);
   expect(await screen.findByRole("heading", { name: "PI-000001" })).toBeInTheDocument();
   expect(screen.getByText("Indian Rupees One Hundred Eighteen Only")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+});
+
+test("shows Tax Invoice creation from invoiceable PI quantity", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token"); window.history.replaceState({}, "", "/tax-invoices");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Tax Invoices & Billing" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Invoiceable PI line" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Tax Invoices" })).toBeInTheDocument();
+  expect(screen.queryByText(/vendor rate|purchase cost|margin/i)).not.toBeInTheDocument();
+});
+
+test("shows Invoice tax mode due date totals and SUPER-ADMIN approval", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token"); window.history.replaceState({}, "", "/tax-invoices/inv-1");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com", is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "INV-000001" })).toBeInTheDocument();
+  expect(screen.getByText(/Place of supply: West Bengal/)).toBeInTheDocument();
+  expect(screen.getByText("Due date: 2026-09-26")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
 });

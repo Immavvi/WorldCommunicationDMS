@@ -2,6 +2,7 @@ from app.models.auth import AuditLog, Permission, Role, User
 from app.models.billing import ProformaInvoice, ProformaInvoiceLine
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
 from app.models.dispatch import ChallanReceiptAllocation, SupplyChallan, SupplyChallanLine
+from app.models.invoicing import TaxInvoice, TaxInvoiceLine
 from app.models.master_data import (
     BankAccount,
     GstRegistration,
@@ -80,6 +81,8 @@ __all__ = [
     "RailwayZone",
     "Role",
     "TaxRateComponent",
+    "TaxInvoice",
+    "TaxInvoiceLine",
     "TaxRateSet",
     "TermsConditionSet",
     "TermsConditionVersion",
