@@ -11,6 +11,8 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProcurementPage } from "./pages/ProcurementPage";
 import { PurchaseOrderDetailPage } from "./pages/PurchaseOrderDetailPage";
 import { RequirementDetailPage } from "./pages/RequirementDetailPage";
+import { ReceivingPage } from "./pages/ReceivingPage";
+import { ReceiptDetailPage } from "./pages/ReceiptDetailPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -30,6 +32,8 @@ export default function App() {
               <Route path="/procurement" element={<ProcurementPage />} />
               <Route path="/purchase-orders/:poId" element={<PurchaseOrderDetailPage />} />
               <Route path="/procurement-requirements/:requirementId" element={<RequirementDetailPage />} />
+              <Route path="/receiving" element={<ReceivingPage />} />
+              <Route path="/material-receipts/:receiptId" element={<ReceiptDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

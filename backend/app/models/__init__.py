@@ -35,6 +35,7 @@ from app.models.procurement import (
     PurchaseOrder,
     PurchaseOrderLine,
 )
+from app.models.receiving import MaterialReceipt, MaterialReceiptLine
 
 __all__ = [
     "AuditLog",
@@ -45,6 +46,8 @@ __all__ = [
     "LoaItem",
     "LoaVariation",
     "LoaVariationLine",
+    "MaterialReceipt",
+    "MaterialReceiptLine",
     "NumberingSeries",
     "OemProfile",
     "Organization",

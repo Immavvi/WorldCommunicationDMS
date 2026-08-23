@@ -41,6 +41,15 @@ vi.mock("../src/api/procurement", () => ({
   getPurchaseOrder: vi.fn().mockResolvedValue({ id: "po-1", po_number: "PO-000001", status: "SUBMITTED", vendor_snapshot: { legal_name: "Vendor" }, shipping_address_snapshot: { address_line_1: "Warehouse" }, lines: [], grand_total: "100.00" }),
 }));
 
+vi.mock("../src/api/receiving", () => ({
+  listReceipts: vi.fn().mockResolvedValue([]), getReceiptPosition: vi.fn().mockResolvedValue([]),
+  createReceipt: vi.fn(), transitionReceipt: vi.fn(),
+  updateReceiptLine: vi.fn(),
+  getReceipt: vi.fn().mockResolvedValue({ id: "grn-1", receipt_number: "GRN-000001",
+    po_number_snapshot: "PO-000001", vendor_snapshot: { legal_name: "Vendor" },
+    status: "RECEIVED", lines: [] }),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -150,4 +159,25 @@ test("shows SUPER-ADMIN PO approval controls", async () => {
   render(<App />);
   expect(await screen.findByRole("heading", { name: "PO-000001" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+});
+
+test("shows readable GRN creation workflow to an ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/receiving");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com",
+    is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "GRN / Material Receipts" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Purchase order" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "PO line" })).toBeInTheDocument();
+});
+
+test("shows receipt verification only to SUPER-ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/material-receipts/grn-1");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com",
+    is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "GRN-000001" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Verify" })).toBeInTheDocument();
 });

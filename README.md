@@ -290,5 +290,7 @@ npm run build
   controlled positive and negative variations, and derived current-approved positions
 - Phase 05 procurement and Purchase Orders: centralized numbering, requirements, contract-linked
   PO commitments, GST calculations, commercial snapshots, and controlled approval/issue workflow
+- Phase 06 GRN/material receiving: partial receipts, discrepancy capture, verified accepted-quantity
+  control, and derived Purchase Order fulfillment
 - Downstream business transactions and document generation: not implemented
 - PostgreSQL migrations: authentication and master-data foundations
