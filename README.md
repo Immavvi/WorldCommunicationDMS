@@ -288,5 +288,7 @@ npm run build
   bank and payment details, versioned Terms & Conditions, and Project/LOA references
 - Phase 04 LOA and contract management: Project/LOA records, immutable original contract items,
   controlled positive and negative variations, and derived current-approved positions
+- Phase 05 procurement and Purchase Orders: centralized numbering, requirements, contract-linked
+  PO commitments, GST calculations, commercial snapshots, and controlled approval/issue workflow
 - Downstream business transactions and document generation: not implemented
 - PostgreSQL migrations: authentication and master-data foundations

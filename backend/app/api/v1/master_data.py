@@ -52,6 +52,22 @@ async def create_terms_version(
     return TermsVersionResponse.model_validate(version)
 
 
+@router.get(
+    "/terms-condition-sets/{terms_set_id}/versions",
+    response_model=list[TermsVersionResponse],
+)
+async def list_terms_versions(
+    terms_set_id: UUID,
+    _: User = MasterManager,
+    service: MasterDataService = Depends(get_service),
+) -> list[TermsVersionResponse]:
+    await service.get("terms-condition-sets", terms_set_id)
+    return [
+        TermsVersionResponse.model_validate(version)
+        for version in await service.repository.list_terms_versions(terms_set_id)
+    ]
+
+
 @router.get("/{resource}", response_model=MasterDataListResponse)
 async def list_master_data(
     resource: str,

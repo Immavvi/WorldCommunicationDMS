@@ -28,6 +28,13 @@ from app.models.master_data import (
     TermsConditionVersion,
     UnitOfMeasure,
 )
+from app.models.procurement import (
+    NumberingSeries,
+    ProcurementRequirement,
+    ProcurementRequirementLine,
+    PurchaseOrder,
+    PurchaseOrderLine,
+)
 
 __all__ = [
     "AuditLog",
@@ -38,6 +45,7 @@ __all__ = [
     "LoaItem",
     "LoaVariation",
     "LoaVariationLine",
+    "NumberingSeries",
     "OemProfile",
     "Organization",
     "OrganizationAddress",
@@ -49,7 +57,11 @@ __all__ = [
     "Product",
     "ProductCategory",
     "ProductModel",
+    "ProcurementRequirement",
+    "ProcurementRequirementLine",
     "Project",
+    "PurchaseOrder",
+    "PurchaseOrderLine",
     "RailwayAuthority",
     "RailwayAuthorityAddress",
     "RailwayAuthorityRole",

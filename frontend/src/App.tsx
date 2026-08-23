@@ -8,6 +8,9 @@ import { LoginPage } from "./pages/LoginPage";
 import { MasterDataPage } from "./pages/MasterDataPage";
 import { LoaDetailPage } from "./pages/LoaDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { ProcurementPage } from "./pages/ProcurementPage";
+import { PurchaseOrderDetailPage } from "./pages/PurchaseOrderDetailPage";
+import { RequirementDetailPage } from "./pages/RequirementDetailPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -24,6 +27,9 @@ export default function App() {
               <Route path="/master-data" element={<MasterDataPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/loas/:loaId" element={<LoaDetailPage />} />
+              <Route path="/procurement" element={<ProcurementPage />} />
+              <Route path="/purchase-orders/:poId" element={<PurchaseOrderDetailPage />} />
+              <Route path="/procurement-requirements/:requirementId" element={<RequirementDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

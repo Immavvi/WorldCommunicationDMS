@@ -26,6 +26,21 @@ vi.mock("../src/api/contracts", () => ({
   transitionVariation: vi.fn(),
 }));
 
+vi.mock("../src/api/masterData", () => ({
+  listMasterData: vi.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }),
+  listTermsVersions: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("../src/api/procurement", () => ({
+  listRequirements: vi.fn().mockResolvedValue([]),
+  listPurchaseOrders: vi.fn().mockResolvedValue([]),
+  createRequirement: vi.fn(), createPurchaseOrder: vi.fn(), transitionPurchaseOrder: vi.fn(),
+  updatePurchaseOrderLine: vi.fn(),
+  getCommitments: vi.fn().mockResolvedValue([]), transitionRequirement: vi.fn(),
+  getRequirement: vi.fn().mockResolvedValue({ id: "pr-1", requirement_number: "PR-000001", status: "DRAFT", lines: [] }),
+  getPurchaseOrder: vi.fn().mockResolvedValue({ id: "po-1", po_number: "PO-000001", status: "SUBMITTED", vendor_snapshot: { legal_name: "Vendor" }, shipping_address_snapshot: { address_line_1: "Warehouse" }, lines: [], grand_total: "100.00" }),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -110,4 +125,29 @@ test("presents original variations and current approved position on LOA detail",
   expect(screen.getByText("VARIATIONS")).toBeInTheDocument();
   expect(screen.getByText("CURRENT APPROVED")).toBeInTheDocument();
   expect(screen.getByText("DRAFT")).toBeInTheDocument();
+});
+
+test("shows procurement and searchable vendor selection to an ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/procurement");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true,
+    roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Procurement & Purchase Orders" })).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Search vendors" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Procurement & POs" })).toBeInTheDocument();
+});
+
+test("shows SUPER-ADMIN PO approval controls", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/purchase-orders/po-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "super-id", email: "super@example.com", is_active: true,
+    roles: [{ name: "SUPER-ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "PO-000001" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
 });

@@ -1,6 +1,7 @@
 from typing import Any
 from uuid import UUID
 
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -64,8 +65,8 @@ class MasterDataRepository:
                 action=action,
                 entity_type=entity_type,
                 entity_id=str(entity_id),
-                old_value=old_value,
-                new_value=new_value,
+                old_value=jsonable_encoder(old_value),
+                new_value=jsonable_encoder(new_value),
             )
         )
 

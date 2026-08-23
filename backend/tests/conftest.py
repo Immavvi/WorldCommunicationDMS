@@ -17,6 +17,7 @@ from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
 from app.models.auth import Role, User
+from app.models.procurement import NumberingSeries
 
 
 @pytest_asyncio.fixture
@@ -39,6 +40,12 @@ async def client(tmp_path) -> AsyncGenerator[AsyncClient]:
                     password_hash=hash_password("super-admin-password"),
                     roles=[super_admin_role],
                 ),
+                NumberingSeries(
+                    document_type="PROCUREMENT_REQUIREMENT", prefix="PR-", next_number=1, padding=6
+                ),
+                NumberingSeries(
+                    document_type="PURCHASE_ORDER", prefix="PO-", next_number=1, padding=6
+                ),
                 User(
                     email="admin@example.com",
                     password_hash=hash_password("admin-user-password"),
@@ -58,6 +65,7 @@ async def client(tmp_path) -> AsyncGenerator[AsyncClient]:
 
     app.dependency_overrides[get_db_session] = get_test_session
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
+        test_client._session_factory = session_factory
         yield test_client
     app.dependency_overrides.clear()
     await engine.dispose()

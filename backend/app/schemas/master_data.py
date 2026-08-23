@@ -64,6 +64,15 @@ class MasterDataWrite(BaseModel):
     specifications: dict[str, Any] | None = None
     roles: list[str] | None = None
     components: dict[str, float] | None = None
+    address_type: str | None = Field(default=None, max_length=20)
+    label: str | None = Field(default=None, max_length=100)
+    address_line_1: str | None = Field(default=None, max_length=255)
+    address_line_2: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    postal_code: str | None = Field(default=None, max_length=10)
+    country: str | None = Field(default=None, max_length=100)
+    contact_name: str | None = Field(default=None, max_length=150)
 
     @field_validator("code")
     @classmethod

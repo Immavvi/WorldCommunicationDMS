@@ -1,0 +1,6 @@
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { getRequirement, transitionRequirement, type Requirement } from "../api/procurement";
+import { useAuth } from "../auth/AuthContext";
+
+export function RequirementDetailPage(){const {requirementId=""}=useParams();const {token}=useAuth();const [record,setRecord]=useState<Requirement|null>(null);const load=useCallback(async()=>{if(token)setRecord(await getRequirement(token,requirementId));},[token,requirementId]);useEffect(()=>{void load();},[load]);async function act(action:string){if(token){await transitionRequirement(token,requirementId,action,`${action} from requirement detail`);await load();}}return <section className="space-y-5"><h1 className="text-3xl font-semibold">{record?.requirement_number??"Procurement Requirement"}</h1><p>Status: <strong>{record?.status}</strong></p>{record?.lines.map(line=><p key={line.id}>{line.description} — {line.required_quantity}</p>)}<div className="space-x-3">{record?.status==="DRAFT"&&<><button onClick={()=>void act("SUBMIT")}>Submit</button><button onClick={()=>void act("CANCEL")}>Cancel</button></>}{record?.status==="SUBMITTED"&&<><button onClick={()=>void act("APPROVE")}>Approve</button><button onClick={()=>void act("REJECT")}>Reject</button></>}</div></section>}
