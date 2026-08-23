@@ -283,5 +283,8 @@ npm run build
 
 - Foundation: implemented
 - Authentication infrastructure: JWT, Argon2 password hashing, user/role/permission schema, and secure one-time SUPER-ADMIN bootstrap command
-- Business modules: not implemented
-- PostgreSQL migrations: authentication foundation only
+- Phase 03 master-data foundation: organizations, parties and roles, saved addresses,
+  Railway hierarchy and authorities, products/OEMs/UOM/HSN, effective-dated GST configuration,
+  bank and payment details, versioned Terms & Conditions, and Project/LOA references
+- Downstream business transactions and document generation: not implemented
+- PostgreSQL migrations: authentication and master-data foundations

@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { AppLayout } from "./layouts/AppLayout";
 import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MasterDataPage } from "./pages/MasterDataPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/forbidden" element={<ForbiddenPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<StatusPage />} />
+              <Route path="/master-data" element={<MasterDataPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

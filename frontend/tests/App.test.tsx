@@ -56,3 +56,17 @@ test("denies an ADMIN direct access to the users page", async () => {
   expect(await screen.findByRole("heading", { name: "Access denied" })).toBeInTheDocument();
   await waitFor(() => expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument());
 });
+
+test("shows Master Data navigation to an ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id",
+    email: "admin@example.com",
+    is_active: true,
+    roles: [{ name: "ADMIN" }],
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole("link", { name: "Master Data" })).toBeInTheDocument();
+});
