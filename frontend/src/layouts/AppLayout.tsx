@@ -13,6 +13,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Link to="/" className="font-semibold tracking-wide text-cyan-400">WCDMS</Link>
             <div className="flex items-center gap-4 text-sm">
               <Link to="/master-data">Master Data</Link>
+              <Link to="/projects">Projects & LOAs</Link>
               {user.roles.some((role) => role.name === "SUPER-ADMIN") && <Link to="/users">Users</Link>}
               <span>{user.roles.map((role) => role.name).join(", ")}</span>
               <button className="text-cyan-400" onClick={logout} type="button">Logout</button>

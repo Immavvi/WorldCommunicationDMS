@@ -1,4 +1,5 @@
 from app.models.auth import AuditLog, Permission, Role, User
+from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
 from app.models.master_data import (
     BankAccount,
     GstRegistration,
@@ -34,6 +35,9 @@ __all__ = [
     "GstRegistration",
     "HsnCode",
     "Loa",
+    "LoaItem",
+    "LoaVariation",
+    "LoaVariationLine",
     "OemProfile",
     "Organization",
     "OrganizationAddress",

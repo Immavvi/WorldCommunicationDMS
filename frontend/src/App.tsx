@@ -6,6 +6,8 @@ import { AppLayout } from "./layouts/AppLayout";
 import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MasterDataPage } from "./pages/MasterDataPage";
+import { LoaDetailPage } from "./pages/LoaDetailPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -20,6 +22,8 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<StatusPage />} />
               <Route path="/master-data" element={<MasterDataPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/loas/:loaId" element={<LoaDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

@@ -354,8 +354,12 @@ class Project(MasterRecord, Base):
 
     code: Mapped[str] = mapped_column(String(50), unique=True)
     name: Mapped[str] = mapped_column(String(255))
+    work_reference: Mapped[str | None] = mapped_column(String(255))
     customer_party_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parties.id"))
     business_scope: Mapped[str] = mapped_column(String(20))
+    railway_zone_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("railway_zones.id", name="fk_projects_railway_zone")
+    )
     railway_division_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("railway_divisions.id")
     )
@@ -371,6 +375,18 @@ class Loa(MasterRecord, Base):
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
     loa_number: Mapped[str] = mapped_column(String(100))
     loa_date: Mapped[date] = mapped_column(Date)
+    issuing_party_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("parties.id", name="fk_loas_issuing_party")
+    )
+    railway_division_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("railway_divisions.id", name="fk_loas_railway_division")
+    )
     customer_reference: Mapped[str | None] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(String(1000))
+    original_contract_value: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), default=Decimal("0.00"), server_default="0.00"
+    )
+    validity_date: Mapped[date | None] = mapped_column(Date)
+    completion_date: Mapped[date | None] = mapped_column(Date)
+    remarks: Mapped[str | None] = mapped_column(String(2000))
     status: Mapped[str] = mapped_column(String(30), default="ACTIVE", server_default="ACTIVE")

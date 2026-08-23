@@ -9,6 +9,23 @@ vi.mock("../src/api/auth", () => ({
   login: vi.fn(),
 }));
 
+vi.mock("../src/api/contracts", () => ({
+  listProjects: vi.fn().mockResolvedValue([]),
+  listLoas: vi.fn().mockResolvedValue([]),
+  createProject: vi.fn(),
+  createLoa: vi.fn(),
+  getLoa: vi.fn().mockResolvedValue({
+    id: "loa-1", project_id: "project-1", loa_number: "LOA/001", loa_date: "2026-08-24",
+    original_contract_value: "100.00", status: "ACTIVE", is_active: true,
+  }),
+  listLoaItems: vi.fn().mockResolvedValue([]),
+  listVariations: vi.fn().mockResolvedValue([{ id: "variation-1", reference_number: "VAR/1", variation_date: "2026-08-25", status: "DRAFT", lines: [] }]),
+  getApprovedPosition: vi.fn().mockResolvedValue({ loa_id: "loa-1", lines: [], original_total: "100.00", variation_total: "0.00", current_approved_total: "100.00" }),
+  createLoaItem: vi.fn(),
+  createVariation: vi.fn(),
+  transitionVariation: vi.fn(),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -69,4 +86,28 @@ test("shows Master Data navigation to an ADMIN", async () => {
   render(<App />);
 
   expect(await screen.findByRole("link", { name: "Master Data" })).toBeInTheDocument();
+});
+
+test("shows the Project and LOA workspace to an ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/projects");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Projects & LOAs" })).toBeInTheDocument();
+});
+
+test("presents original variations and current approved position on LOA detail", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/loas/loa-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "LOA/001" })).toBeInTheDocument();
+  expect(screen.getByText("ORIGINAL")).toBeInTheDocument();
+  expect(screen.getByText("VARIATIONS")).toBeInTheDocument();
+  expect(screen.getByText("CURRENT APPROVED")).toBeInTheDocument();
+  expect(screen.getByText("DRAFT")).toBeInTheDocument();
 });
