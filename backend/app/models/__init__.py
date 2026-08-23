@@ -1,4 +1,5 @@
 from app.models.auth import AuditLog, Permission, Role, User
+from app.models.billing import ProformaInvoice, ProformaInvoiceLine
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
 from app.models.dispatch import ChallanReceiptAllocation, SupplyChallan, SupplyChallanLine
 from app.models.master_data import (
@@ -61,6 +62,8 @@ __all__ = [
     "PartyRole",
     "PaymentTerm",
     "Permission",
+    "ProformaInvoice",
+    "ProformaInvoiceLine",
     "Product",
     "ProductCategory",
     "ProductModel",

@@ -63,6 +63,16 @@ vi.mock("../src/api/dispatch", () => ({
     ] }),
 }));
 
+vi.mock("../src/api/billing", () => ({
+  listPis: vi.fn().mockResolvedValue([]), getBillablePosition: vi.fn().mockResolvedValue([]),
+  createPi: vi.fn(), transitionPi: vi.fn(), updatePiLine: vi.fn(),
+  getPi: vi.fn().mockResolvedValue({ id: "pi-1", pi_number: "PI-000001", status: "SUBMITTED",
+    customer_snapshot: { legal_name: "Railway Customer" }, organization_snapshot: {},
+    bill_to_snapshot: {}, ship_to_snapshot: {}, bank_snapshot: {}, lines: [],
+    taxable_amount: "100.00", cgst_amount: "9.00", sgst_amount: "9.00", igst_amount: "0.00",
+    grand_total: "118.00", amount_in_words: "Indian Rupees One Hundred Eighteen Only" }),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -217,4 +227,23 @@ test("records acknowledgement from delivered Challan detail", async () => {
   expect(screen.getByRole("heading", { name: "Dispatched material" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Record acknowledgement" })).toBeInTheDocument();
   expect(screen.queryByText(/rate|cost|tax|margin/i)).not.toBeInTheDocument();
+});
+
+test("shows PI creation from eligible dispatched material without procurement costs", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token"); window.history.replaceState({}, "", "/proforma-invoices");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Proforma Invoices" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Billable dispatch" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Proforma Invoices" })).toBeInTheDocument();
+  expect(screen.queryByText(/vendor rate|purchase cost|margin/i)).not.toBeInTheDocument();
+});
+
+test("shows backend-calculated PI totals and SUPER-ADMIN approval", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token"); window.history.replaceState({}, "", "/proforma-invoices/pi-1");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com", is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "PI-000001" })).toBeInTheDocument();
+  expect(screen.getByText("Indian Rupees One Hundred Eighteen Only")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
 });

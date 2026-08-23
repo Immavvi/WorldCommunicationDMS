@@ -15,6 +15,8 @@ import { ReceivingPage } from "./pages/ReceivingPage";
 import { ReceiptDetailPage } from "./pages/ReceiptDetailPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
+import { ProformaInvoicesPage } from "./pages/ProformaInvoicesPage";
+import { ProformaInvoiceDetailPage } from "./pages/ProformaInvoiceDetailPage";
 import { DispatchPage } from "./pages/DispatchPage";
 import { ChallanDetailPage } from "./pages/ChallanDetailPage";
 
@@ -38,6 +40,8 @@ export default function App() {
               <Route path="/material-receipts/:receiptId" element={<ReceiptDetailPage />} />
               <Route path="/dispatch" element={<DispatchPage />} />
               <Route path="/supply-challans/:challanId" element={<ChallanDetailPage />} />
+              <Route path="/proforma-invoices" element={<ProformaInvoicesPage />} />
+              <Route path="/proforma-invoices/:piId" element={<ProformaInvoiceDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />
