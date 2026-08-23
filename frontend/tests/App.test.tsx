@@ -50,6 +50,19 @@ vi.mock("../src/api/receiving", () => ({
     status: "RECEIVED", lines: [] }),
 }));
 
+vi.mock("../src/api/dispatch", () => ({
+  listChallans: vi.fn().mockResolvedValue([]),
+  getDispatchAvailability: vi.fn().mockResolvedValue([]),
+  createChallan: vi.fn(), transitionChallan: vi.fn(), acknowledgeChallan: vi.fn(), updateChallanLine: vi.fn(),
+  getChallan: vi.fn().mockResolvedValue({ id: "ch-1", challan_number: "CH-000001",
+    status: "DELIVERED", customer_snapshot: { legal_name: "Railway Customer" },
+    delivery_address_snapshot: { address_line_1: "Railway Store" },
+    dispatch_from_snapshot: {}, organization_snapshot: {}, lines: [
+      { id: "line-1", line_number: 1, description_snapshot: "Network equipment",
+        unit_snapshot: "Nos", dispatched_quantity: "2.0000", allocations: [] },
+    ] }),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -180,4 +193,28 @@ test("shows receipt verification only to SUPER-ADMIN", async () => {
   render(<App />);
   expect(await screen.findByRole("heading", { name: "GRN-000001" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Verify" })).toBeInTheDocument();
+});
+
+test("shows verified-material Challan workflow without commercial fields", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/dispatch");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com",
+    is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Supply Challan & Dispatch" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Verified material" })).toBeInTheDocument();
+  expect(screen.queryByText(/purchase rate|vendor cost|margin/i)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Challans / Dispatch" })).toBeInTheDocument();
+});
+
+test("records acknowledgement from delivered Challan detail", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/supply-challans/ch-1");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com",
+    is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "CH-000001" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Dispatched material" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Record acknowledgement" })).toBeInTheDocument();
+  expect(screen.queryByText(/rate|cost|tax|margin/i)).not.toBeInTheDocument();
 });

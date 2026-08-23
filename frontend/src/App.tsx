@@ -15,6 +15,8 @@ import { ReceivingPage } from "./pages/ReceivingPage";
 import { ReceiptDetailPage } from "./pages/ReceiptDetailPage";
 import { StatusPage } from "./pages/StatusPage";
 import { UsersPage } from "./pages/UsersPage";
+import { DispatchPage } from "./pages/DispatchPage";
+import { ChallanDetailPage } from "./pages/ChallanDetailPage";
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
               <Route path="/procurement-requirements/:requirementId" element={<RequirementDetailPage />} />
               <Route path="/receiving" element={<ReceivingPage />} />
               <Route path="/material-receipts/:receiptId" element={<ReceiptDetailPage />} />
+              <Route path="/dispatch" element={<DispatchPage />} />
+              <Route path="/supply-challans/:challanId" element={<ChallanDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

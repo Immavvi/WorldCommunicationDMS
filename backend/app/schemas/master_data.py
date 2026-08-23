@@ -30,6 +30,7 @@ class MasterDataWrite(BaseModel):
     oem_profile_id: UUID | None = None
     project_id: UUID | None = None
     railway_division_id: UUID | None = None
+    authority_id: UUID | None = None
     category_id: UUID | None = None
     product_model_id: UUID | None = None
     unit_id: UUID | None = None

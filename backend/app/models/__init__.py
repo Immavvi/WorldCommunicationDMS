@@ -1,5 +1,6 @@
 from app.models.auth import AuditLog, Permission, Role, User
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
+from app.models.dispatch import ChallanReceiptAllocation, SupplyChallan, SupplyChallanLine
 from app.models.master_data import (
     BankAccount,
     GstRegistration,
@@ -39,6 +40,7 @@ from app.models.receiving import MaterialReceipt, MaterialReceiptLine
 
 __all__ = [
     "AuditLog",
+    "ChallanReceiptAllocation",
     "BankAccount",
     "GstRegistration",
     "HsnCode",
@@ -48,6 +50,8 @@ __all__ = [
     "LoaVariationLine",
     "MaterialReceipt",
     "MaterialReceiptLine",
+    "SupplyChallan",
+    "SupplyChallanLine",
     "NumberingSeries",
     "OemProfile",
     "Organization",
