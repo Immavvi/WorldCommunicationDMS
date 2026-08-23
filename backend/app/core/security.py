@@ -9,7 +9,13 @@ from app.core.config import get_settings
 password_hash = PasswordHash.recommended()
 
 
+def validate_password(password: str) -> None:
+    if len(password) < 12:
+        raise ValueError("Password must contain at least 12 characters.")
+
+
 def hash_password(password: str) -> str:
+    validate_password(password)
     return password_hash.hash(password)
 
 

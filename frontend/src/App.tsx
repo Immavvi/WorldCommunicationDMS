@@ -1,16 +1,31 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { AuthProvider } from "./auth/AuthContext";
+import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { AppLayout } from "./layouts/AppLayout";
+import { ForbiddenPage } from "./pages/ForbiddenPage";
+import { LoginPage } from "./pages/LoginPage";
 import { StatusPage } from "./pages/StatusPage";
+import { UsersPage } from "./pages/UsersPage";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AppLayout>
-        <Routes>
-          <Route path="*" element={<StatusPage />} />
-        </Routes>
-      </AppLayout>
+      <AuthProvider>
+        <AppLayout>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forbidden" element={<ForbiddenPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<StatusPage />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
+              <Route path="/users" element={<UsersPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppLayout>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

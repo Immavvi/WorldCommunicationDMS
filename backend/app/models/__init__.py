@@ -1,3 +1,3 @@
-from app.models.auth import Permission, Role, User
+from app.models.auth import AuditLog, Permission, Role, User
 
-__all__ = ["Permission", "Role", "User"]
+__all__ = ["AuditLog", "Permission", "Role", "User"]
