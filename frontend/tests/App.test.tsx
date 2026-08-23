@@ -85,6 +85,21 @@ vi.mock("../src/api/invoicing", () => ({
     amount_in_words: "Indian Rupees One Hundred Eighteen Only" }),
 }));
 
+vi.mock("../src/api/quotations", () => ({
+  listQuotations: vi.fn().mockResolvedValue([]), createQuotation: vi.fn(),
+  updateQuotation: vi.fn(), addQuotationLine: vi.fn(), updateQuotationLine: vi.fn(),
+  deleteQuotationLine: vi.fn(), transitionQuotation: vi.fn(), createQuotationRevision: vi.fn(),
+  quotationHistory: vi.fn().mockResolvedValue([
+    { id: "q-1", quotation_number: "QTN-000001", revision_number: 0, status: "SUBMITTED", is_latest: true },
+  ]),
+  getQuotation: vi.fn().mockResolvedValue({ id: "q-1", quotation_number: "QTN-000001",
+    revision_number: 0, status: "SUBMITTED", is_latest: true, subject: "Network supply",
+    validity_date: "2026-09-30", customer_snapshot: { legal_name: "Railway Customer" },
+    tax_mode: "INTRA_STATE", place_of_supply_state: "West Bengal", place_of_supply_state_code: "19",
+    lines: [], cgst_amount: "9.00", sgst_amount: "9.00", igst_amount: "0.00",
+    grand_total: "118.00", amount_in_words: "Indian Rupees One Hundred Eighteen Only" }),
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 
 beforeEach(() => {
@@ -277,5 +292,25 @@ test("shows Invoice tax mode due date totals and SUPER-ADMIN approval", async ()
   expect(await screen.findByRole("heading", { name: "INV-000001" })).toBeInTheDocument();
   expect(screen.getByText(/Place of supply: West Bengal/)).toBeInTheDocument();
   expect(screen.getByText("Due date: 2026-09-26")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+});
+
+test("shows readable independent Quotation creation", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token"); window.history.replaceState({}, "", "/quotations");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Quotation Management" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Customer" })).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: "Free-text item" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Quotations" })).toBeInTheDocument();
+  expect(screen.queryByText(/vendor rate|purchase cost|margin/i)).not.toBeInTheDocument();
+});
+
+test("shows Quotation revision history and SUPER-ADMIN approval", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token"); window.history.replaceState({}, "", "/quotations/q-1");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com", is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "QTN-000001 / Revision 0" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Revision history" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
 });

@@ -38,6 +38,7 @@ from app.models.procurement import (
     PurchaseOrder,
     PurchaseOrderLine,
 )
+from app.models.quotations import Quotation, QuotationLine
 from app.models.receiving import MaterialReceipt, MaterialReceiptLine
 
 __all__ = [
@@ -73,6 +74,8 @@ __all__ = [
     "Project",
     "PurchaseOrder",
     "PurchaseOrderLine",
+    "Quotation",
+    "QuotationLine",
     "RailwayAuthority",
     "RailwayAuthorityAddress",
     "RailwayAuthorityRole",

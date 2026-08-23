@@ -58,6 +58,9 @@ async def client(tmp_path) -> AsyncGenerator[AsyncClient]:
                 NumberingSeries(
                     document_type="TAX_INVOICE", prefix="INV-", next_number=1, padding=6
                 ),
+                NumberingSeries(
+                    document_type="QUOTATION", prefix="QTN-", next_number=1, padding=6
+                ),
                 User(
                     email="admin@example.com",
                     password_hash=hash_password("admin-user-password"),

@@ -21,6 +21,8 @@ import { ProformaInvoicesPage } from "./pages/ProformaInvoicesPage";
 import { ProformaInvoiceDetailPage } from "./pages/ProformaInvoiceDetailPage";
 import { DispatchPage } from "./pages/DispatchPage";
 import { ChallanDetailPage } from "./pages/ChallanDetailPage";
+import { QuotationsPage } from "./pages/QuotationsPage";
+import { QuotationDetailPage } from "./pages/QuotationDetailPage";
 
 export default function App() {
   return (
@@ -46,6 +48,8 @@ export default function App() {
               <Route path="/proforma-invoices/:piId" element={<ProformaInvoiceDetailPage />} />
               <Route path="/tax-invoices" element={<TaxInvoicesPage />} />
               <Route path="/tax-invoices/:invoiceId" element={<TaxInvoiceDetailPage />} />
+              <Route path="/quotations" element={<QuotationsPage />} />
+              <Route path="/quotations/:quotationId" element={<QuotationDetailPage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />

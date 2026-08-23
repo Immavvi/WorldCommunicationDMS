@@ -1,0 +1,14 @@
+import { apiRequest } from "./client";
+
+export type QuotationLine = { id: string; line_number: number; product_id?: string; description_snapshot: string; oem_snapshot?: string; model_snapshot?: string; hsn_snapshot?: string; unit_snapshot: string; quantity: string; quoted_rate: string; discount_percent: string; taxable_amount: string; cgst_percent: string; sgst_percent: string; igst_percent: string; cgst_amount: string; sgst_amount: string; igst_amount: string; line_total: string };
+export type Quotation = { id: string; quotation_number: string; revision_number: number; previous_revision_id?: string; is_latest: boolean; quotation_date: string; validity_date?: string; customer_party_id: string; business_scope: "RAILWAY" | "NON_RAILWAY"; subject: string; status: string; tax_mode: "INTRA_STATE" | "INTER_STATE"; place_of_supply_state: string; place_of_supply_state_code: string; customer_snapshot: Record<string, string>; organization_snapshot: Record<string, string>; payment_terms_snapshot?: Record<string, string>; terms_snapshot?: Record<string, string>; taxable_amount: string; cgst_amount: string; sgst_amount: string; igst_amount: string; grand_total: string; amount_in_words: string; lines: QuotationLine[] };
+export const listQuotations = (token: string) => apiRequest<Quotation[]>("/quotations", { token });
+export const getQuotation = (token: string, id: string) => apiRequest<Quotation>(`/quotations/${id}`, { token });
+export const createQuotation = (token: string, data: Record<string, unknown>) => apiRequest<Quotation>("/quotations", { method: "POST", token, body: JSON.stringify(data) });
+export const updateQuotation = (token: string, id: string, data: Record<string, unknown>) => apiRequest<Quotation>(`/quotations/${id}`, { method: "PATCH", token, body: JSON.stringify(data) });
+export const addQuotationLine = (token: string, id: string, data: Record<string, unknown>) => apiRequest<Quotation>(`/quotations/${id}/lines`, { method: "POST", token, body: JSON.stringify(data) });
+export const updateQuotationLine = (token: string, id: string, lineId: string, data: Record<string, unknown>) => apiRequest<Quotation>(`/quotations/${id}/lines/${lineId}`, { method: "PUT", token, body: JSON.stringify(data) });
+export const deleteQuotationLine = (token: string, id: string, lineId: string) => apiRequest<void>(`/quotations/${id}/lines/${lineId}`, { method: "DELETE", token });
+export const transitionQuotation = (token: string, id: string, action: string, reason: string) => apiRequest<Quotation>(`/quotations/${id}/actions`, { method: "POST", token, body: JSON.stringify({ action, reason }) });
+export const createQuotationRevision = (token: string, id: string, reason: string) => apiRequest<Quotation>(`/quotations/${id}/revisions`, { method: "POST", token, body: JSON.stringify({ reason }) });
+export const quotationHistory = (token: string, id: string) => apiRequest<Quotation[]>(`/quotations/${id}/revisions`, { token });
