@@ -1,12 +1,14 @@
+from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.auth import AuditLog
 from app.models.contracts import LoaItem, LoaVariation
 from app.models.master_data import Loa, Party, Project, UnitOfMeasure
+from app.models.procurement import PurchaseOrder, PurchaseOrderLine
 
 
 class ContractRepository:
@@ -70,6 +72,24 @@ class ContractRepository:
             .order_by(LoaVariation.variation_date, LoaVariation.created_at)
         )
         return list(result.unique())
+
+    async def committed_quantity(self, loa_item_id: UUID) -> Decimal:
+        value = await self.session.scalar(
+            select(func.coalesce(func.sum(PurchaseOrderLine.ordered_quantity), 0))
+            .join(PurchaseOrder)
+            .where(
+                PurchaseOrderLine.loa_item_id == loa_item_id,
+                PurchaseOrder.status.in_(
+                    ("APPROVED", "ISSUED", "PARTIALLY_FULFILLED", "FULFILLED")
+                ),
+            )
+        )
+        return Decimal(value or 0)
+
+    async def lock_item(self, loa_item_id: UUID) -> None:
+        await self.session.scalar(
+            select(LoaItem.id).where(LoaItem.id == loa_item_id).with_for_update()
+        )
 
     def audit(
         self, actor_id: UUID, action: str, entity_type: str, entity_id: UUID, old, new, reason=None

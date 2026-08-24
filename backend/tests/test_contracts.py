@@ -2,6 +2,8 @@ from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
+from test_procurement import foundation as procurement_foundation
+from test_procurement import po_payload
 
 
 async def login(client: AsyncClient, email: str, password: str) -> str:
@@ -263,6 +265,64 @@ async def test_new_positive_variation_item_enters_position_only_when_approved(
     )).json()
     assert any(line["contractual_item_id"] == draft_line_id for line in applied_position["lines"])
     assert (await client.get(f"/api/v1/loas/{loa_id}/items", headers=auth(admin))).json() == []
+
+
+@pytest.mark.asyncio
+async def test_negative_variation_cannot_reduce_approval_below_po_commitment(
+    client: AsyncClient,
+) -> None:
+    admin = await login(client, "admin@example.com", "admin-user-password")
+    super_admin = await login(client, "superadmin@example.com", "super-admin-password")
+    data = await procurement_foundation(client, admin)
+    po = (
+        await client.post(
+            "/api/v1/purchase-orders",
+            json=po_payload(data, quantity="70"),
+            headers=auth(admin),
+        )
+    ).json()
+    for action, token in (("SUBMIT", admin), ("APPROVE", super_admin)):
+        response = await client.post(
+            f"/api/v1/purchase-orders/{po['id']}/actions",
+            json={"action": action, "reason": "Integration test"},
+            headers=auth(token),
+        )
+        assert response.status_code == 200, response.text
+
+    variation = (
+        await client.post(
+            f"/api/v1/loas/{data['loa']['id']}/variations",
+            json={
+                "reference_number": "VAR/BELOW-COMMITMENT",
+                "variation_date": "2026-08-26",
+                "lines": [
+                    {
+                        "loa_item_id": data["item"]["id"],
+                        "description": "Contract item reduction",
+                        "unit_id": data["unit"]["id"],
+                        "direction": "NEGATIVE",
+                        "quantity": "40",
+                        "rate": "20",
+                    }
+                ],
+            },
+            headers=auth(admin),
+        )
+    ).json()
+    denied = await client.post(
+        f"/api/v1/variations/{variation['id']}/actions",
+        json={"action": "APPROVE", "reason": "Would invalidate the PO"},
+        headers=auth(super_admin),
+    )
+    assert denied.status_code == 422
+    assert denied.json()["error"]["code"] == "variation_below_committed_quantity"
+
+    position = (
+        await client.get(
+            f"/api/v1/loas/{data['loa']['id']}/approved-position", headers=auth(admin)
+        )
+    ).json()
+    assert position["lines"][0]["current_approved_quantity"] == "100.0000"
 
 
 @pytest.mark.asyncio

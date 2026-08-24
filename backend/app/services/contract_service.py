@@ -298,6 +298,8 @@ class ContractService:
         )
 
     async def _validate_nonnegative_position(self, pending: LoaVariation) -> None:
+        for loa_item_id in {line.loa_item_id for line in pending.lines if line.loa_item_id}:
+            await self.repository.lock_item(loa_item_id)
         current = await self.approved_position(pending.loa_id)
         quantities = {line.loa_item_id: line.current_approved_quantity for line in current.lines}
         for line in pending.lines:
@@ -310,12 +312,20 @@ class ContractService:
             if line.loa_item_id:
                 delta = line.quantity if line.direction == "POSITIVE" else -line.quantity
                 quantities[line.loa_item_id] += delta
-                if quantities[line.loa_item_id] < 0:
-                    raise AppError(
-                        422,
-                        "negative_approved_quantity",
-                        "Variation would make approved quantity negative.",
-                    )
+        for loa_item_id in {line.loa_item_id for line in pending.lines if line.loa_item_id}:
+            if quantities[loa_item_id] < 0:
+                raise AppError(
+                    422,
+                    "negative_approved_quantity",
+                    "Variation would make approved quantity negative.",
+                )
+            committed = await self.repository.committed_quantity(loa_item_id)
+            if quantities[loa_item_id] < committed:
+                raise AppError(
+                    422,
+                    "variation_below_committed_quantity",
+                    "Variation would reduce approved quantity below existing PO commitments.",
+                )
 
     async def _validate_customer(self, party_id: UUID) -> None:
         party = await self.repository.get_party(party_id)
