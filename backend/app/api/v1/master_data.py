@@ -20,6 +20,7 @@ from app.services.master_data_service import MasterDataService
 router = APIRouter(prefix="/master-data", tags=["master-data"])
 MasterManager = Depends(require_roles(SUPER_ADMIN_ROLE, ADMIN_ROLE))
 FINANCIAL_RESOURCES = {"bank-accounts", "gst-registrations", "tax-rate-sets"}
+PrimaryOrganizationManager = Depends(require_roles(SUPER_ADMIN_ROLE))
 
 
 def ensure_write_access(resource: str, current_user: User) -> None:
@@ -79,6 +80,18 @@ async def list_master_data(
 ) -> MasterDataListResponse:
     items, total = await service.list(resource, offset, limit, active)
     return MasterDataListResponse(items=items, total=total, offset=offset, limit=limit)
+
+
+@router.post(
+    "/organizations/{organization_id}/set-primary",
+    response_model=MasterDataResponse,
+)
+async def set_primary_organization(
+    organization_id: UUID,
+    current_user: User = PrimaryOrganizationManager,
+    service: MasterDataService = Depends(get_service),
+) -> MasterDataResponse:
+    return await service.set_primary_organization(organization_id, current_user.id)
 
 
 @router.post("/{resource}", response_model=MasterDataResponse, status_code=status.HTTP_201_CREATED)

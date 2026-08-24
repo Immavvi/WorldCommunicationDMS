@@ -11,6 +11,21 @@ async def login(client: AsyncClient, email: str, password: str) -> str:
     return response.json()["access_token"]
 
 
+@pytest.mark.asyncio
+async def test_local_frontend_origin_can_reach_login(client: AsyncClient) -> None:
+    response = await client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
 def authorization(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 

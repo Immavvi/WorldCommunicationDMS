@@ -17,6 +17,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { AdministrationPage } from "./pages/AdministrationPage";
+import { OrganizationSettingsPage } from "./pages/OrganizationSettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { TaxInvoicesPage } from "./pages/TaxInvoicesPage";
 import { TaxInvoiceDetailPage } from "./pages/TaxInvoiceDetailPage";
@@ -67,6 +68,7 @@ export default function App() {
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />
               <Route path="/administration" element={<AdministrationPage />} />
+              <Route path="/administration/organization-settings" element={<OrganizationSettingsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

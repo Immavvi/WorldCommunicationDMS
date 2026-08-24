@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "../src/App";
 import { changePassword, getCurrentUser } from "../src/api/auth";
 import { createUser, listUsers, resetUserPassword, setUserActive } from "../src/api/users";
+import { createMasterData, listMasterData, setPrimaryOrganization } from "../src/api/masterData";
 
 vi.mock("../src/api/auth", () => ({
   getCurrentUser: vi.fn(),
@@ -38,6 +39,10 @@ vi.mock("../src/api/contracts", () => ({
 
 vi.mock("../src/api/masterData", () => ({
   listMasterData: vi.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }),
+  createMasterData: vi.fn().mockResolvedValue({}),
+  updateMasterData: vi.fn().mockResolvedValue({}),
+  setPrimaryOrganization: vi.fn().mockResolvedValue({}),
+  setMasterDataActive: vi.fn().mockResolvedValue({}),
   listTermsVersions: vi.fn().mockResolvedValue([]),
 }));
 
@@ -186,6 +191,9 @@ const mockedCreateUser = vi.mocked(createUser);
 const mockedListUsers = vi.mocked(listUsers);
 const mockedResetUserPassword = vi.mocked(resetUserPassword);
 const mockedSetUserActive = vi.mocked(setUserActive);
+const mockedListMasterData = vi.mocked(listMasterData);
+const mockedCreateMasterData = vi.mocked(createMasterData);
+const mockedSetPrimaryOrganization = vi.mocked(setPrimaryOrganization);
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -219,7 +227,7 @@ test("shows grouped reports, filters, table and Excel control", async () => {
     is_active:true,roles:[{name:"ADMIN"}]});
   render(<App />);
   expect(await screen.findByRole("heading",{name:"Reports"})).toBeInTheDocument();
-  expect(screen.getByText("PO-000001")).toBeInTheDocument();
+  expect(await screen.findByText("PO-000001")).toBeInTheDocument();
   expect(screen.getByRole("button",{name:"Export Excel"})).toBeInTheDocument();
   expect(screen.queryByRole("button",{name:"receivables"})).not.toBeInTheDocument();
 });
@@ -271,6 +279,76 @@ test("shows safe administration status and read-only numbering to SUPER-ADMIN", 
   expect(await screen.findByText("PO-000042")).toBeInTheDocument();
   expect(screen.getByText("test-schema")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Users & Access" })).toHaveAttribute("href", "/users");
+  expect(screen.getByRole("link", { name: "Organization / Bank Settings" })).toHaveAttribute("href", "/administration/organization-settings");
+});
+
+test("shows dedicated snapshot-safe organization and bank settings to SUPER-ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/administration/organization-settings");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com", is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  mockedListMasterData.mockImplementation(async (_token, resource) => ({
+    items: resource === "organizations" ? [{ id: "org-1", resource, is_active: true, created_at: "", updated_at: "1", data: { code: "WC", legal_name: "World Communication", is_primary: true } }]
+      : resource === "bank-accounts" ? [{ id: "bank-1", resource, is_active: true, created_at: "", updated_at: "", data: { organization_id: "org-1", account_name: "Current Account", bank_name: "Bank", account_number: "****1234", ifsc: "BANK0001", is_default: true } }]
+      : [], total: resource === "organizations" || resource === "bank-accounts" ? 1 : 0, offset: 0, limit: 50,
+  }));
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Organization / Bank Settings" })).toBeInTheDocument();
+  expect(await screen.findByDisplayValue("World Communication")).toBeInTheDocument();
+  expect(screen.getByText("****1234")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Default Document Settings" })).toBeInTheDocument();
+});
+
+test("SUPER-ADMIN can configure the initial World Communication organization", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/administration/organization-settings");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com", is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  let configured = false;
+  const organization = { id: "org-new", resource: "organizations", is_active: true, created_at: "", updated_at: "1", data: { code: "WC", legal_name: "World Communication" } };
+  mockedListMasterData.mockImplementation(async (_token, resource) => ({ items: configured && resource === "organizations" ? [organization] : [], total: configured && resource === "organizations" ? 1 : 0, offset: 0, limit: 50 }));
+  mockedCreateMasterData.mockImplementation(async (_token, resource) => { configured = true; return { ...organization, resource }; });
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Configure Organization" }));
+  fireEvent.change(screen.getByPlaceholderText("e.g. WC"), { target: { value: "WC" } });
+  fireEvent.change(screen.getByPlaceholderText("World Communication"), { target: { value: "World Communication" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save organization" }));
+  await waitFor(() => expect(mockedCreateMasterData).toHaveBeenCalledWith("valid-token", "organizations", expect.objectContaining({ code: "WC", legal_name: "World Communication" })));
+  expect(await screen.findByDisplayValue("World Communication")).toBeInTheDocument();
+  expect(screen.queryByText(/Customers|Vendors|OEMs/)).not.toBeInTheDocument();
+});
+
+test("SUPER-ADMIN can persist the existing organization as primary without changing child defaults", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/administration/organization-settings");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com", is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  let primary = false;
+  mockedListMasterData.mockImplementation(async (_token, resource) => {
+    const data = resource === "organizations" ? [{ id: "org-1", resource, is_active: true, created_at: "", updated_at: "1", data: { code: "WC", legal_name: "World Communication", is_primary: primary } }]
+      : resource === "organization-addresses" ? [{ id: "address-1", resource, is_active: true, created_at: "", updated_at: "", data: { organization_id: "org-1", label: "World Communication", address_line_1: "12 Park Street", city: "Kolkata", state: "West Bengal", postal_code: "700016", country: "India", is_default: true } }]
+      : resource === "gst-registrations" ? [{ id: "gst-1", resource, is_active: true, created_at: "", updated_at: "", data: { organization_id: "org-1", gstin: "19ABCDE1234F1Z5", is_default: true } }]
+      : [{ id: "bank-1", resource, is_active: true, created_at: "", updated_at: "", data: { organization_id: "org-1", account_name: "WORLD COMMUNICATION", is_default: true } }];
+    return { items: data, total: data.length, offset: 0, limit: 50 };
+  });
+  mockedSetPrimaryOrganization.mockImplementation(async () => { primary = true; return { id: "org-1", resource: "organizations", is_active: true, created_at: "", updated_at: "2", data: { code: "WC", legal_name: "World Communication", is_primary: true } }; });
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Set as Primary Organization" }));
+  await waitFor(() => expect(mockedSetPrimaryOrganization).toHaveBeenCalledWith("valid-token", "org-1"));
+  expect(await screen.findByText("✓ PRIMARY")).toBeInTheDocument();
+  expect(screen.getAllByText("World Communication").length).toBeGreaterThan(0);
+  const defaultAddress = document.querySelector(".default-address-value");
+  expect(defaultAddress).toHaveTextContent("12 Park Street");
+  expect(defaultAddress).toHaveTextContent("Kolkata, West Bengal - 700016");
+  expect(defaultAddress).not.toHaveTextContent(/^World Communication$/);
+  expect(screen.getAllByText("19ABCDE1234F1Z5").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("WORLD COMMUNICATION").length).toBeGreaterThan(0);
+  expect(mockedCreateMasterData).not.toHaveBeenCalled();
+});
+
+test("denies an ADMIN direct access to organization and bank settings", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/administration/organization-settings");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Access denied" })).toBeInTheDocument();
 });
 
 test("forces a temporary-password user to the password change page", async () => {
@@ -428,7 +506,7 @@ test("shows Asset register and remaining serial registration quantity", async ()
     is_active: true, roles: [{ name: "ADMIN" }] });
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Assets" })).toBeInTheDocument();
-  expect(screen.getByText(/Accepted: 10, Registered: 7, Remaining: 3/)).toBeInTheDocument();
+  expect(await screen.findByText(/Accepted: 10, Registered: 7, Remaining: 3/)).toBeInTheDocument();
   expect(screen.getByText("AST-000001")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Assets" })).toBeInTheDocument();
 });
@@ -440,7 +518,7 @@ test("shows payment register and role-aware finance actions", async () => {
     is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Customer Payments" })).toBeInTheDocument();
-  expect(screen.getByText("RCT-000001")).toBeInTheDocument();
+  expect(await screen.findByText("RCT-000001")).toBeInTheDocument();
   expect(screen.getByText(/unallocated ₹200.00/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Receivables" })).toBeInTheDocument();
@@ -453,7 +531,7 @@ test("shows Alerts inbox, severity, rules, and notification count", async () => 
     is_active:true,roles:[{name:"SUPER-ADMIN"}] });
   render(<App />);
   expect(await screen.findByRole("heading",{name:"Alerts"})).toBeInTheDocument();
-  expect(screen.getByText(/HIGH — Invoice overdue/)).toBeInTheDocument();
+  expect(await screen.findByText(/HIGH — Invoice overdue/)).toBeInTheDocument();
   expect(screen.getByRole("button",{name:"Acknowledge"})).toBeInTheDocument();
   expect(screen.getByRole("heading",{name:"Alert Rule Settings"})).toBeInTheDocument();
   expect(await screen.findByLabelText("Unread notifications")).toHaveTextContent("1");
@@ -467,7 +545,7 @@ test("shows derived receivable position", async () => {
     is_active: true, roles: [{ name: "ADMIN" }] });
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Receivables" })).toBeInTheDocument();
-  expect(screen.getByText("PARTIALLY_PAID_OVERDUE (4 days)")).toBeInTheDocument();
+  expect(await screen.findByText("PARTIALLY_PAID_OVERDUE (4 days)")).toBeInTheDocument();
   expect(screen.getByText("₹680.00")).toBeInTheDocument();
 });
 
@@ -480,7 +558,7 @@ test("shows verified-material Challan workflow without commercial fields", async
   expect(await screen.findByRole("heading", { name: "Supply Challan & Dispatch" })).toBeInTheDocument();
   expect(screen.getByRole("combobox", { name: "Verified material" })).toBeInTheDocument();
   expect(screen.queryByText(/purchase rate|vendor cost|margin/i)).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Challans / Dispatch" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Supply Challans" })).toBeInTheDocument();
 });
 
 test("records acknowledgement from delivered Challan detail", async () => {

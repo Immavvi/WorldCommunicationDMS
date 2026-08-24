@@ -6,7 +6,7 @@ export type Receivable = { tax_invoice_id: string; invoice_number: string; custo
 export type EligibleInvoice = { tax_invoice_id: string; invoice_number: string; outstanding_amount: string; project_name: string | null };
 
 export const listPayments = (token: string) => apiRequest<Payment[]>("/payments", { token });
-export const listReceivables = (token: string) => apiRequest<Receivable[]>("/receivables", { token });
+export const listReceivables = (token: string, query = "") => apiRequest<Receivable[]>(`/receivables${query ? `?${query}` : ""}`, { token });
 export const eligibleInvoices = (token: string, id: string) => apiRequest<EligibleInvoice[]>(`/payments/${id}/eligible-invoices`, { token });
 export const createPayment = (token: string, body: unknown) => apiRequest<Payment>("/payments", { method: "POST", token, body: JSON.stringify(body) });
 export const allocatePayment = (token: string, id: string, body: unknown) => apiRequest<Payment>(`/payments/${id}/allocations`, { method: "POST", token, body: JSON.stringify(body) });

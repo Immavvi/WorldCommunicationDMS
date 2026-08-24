@@ -6,6 +6,8 @@ from app.core.errors import AppError
 from app.core.security import verify_password
 from app.db.base import Base
 from app.models.auth import AuditLog, Role
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import AuthenticationService
 from app.services.bootstrap_service import BootstrapService
 
 
@@ -29,6 +31,15 @@ async def test_initial_super_admin_bootstrap_is_secure_audited_and_one_time(tmp_
             assert user.must_change_password is False
             assert user.password_hash != "operator-entered-password"
             assert verify_password("operator-entered-password", user.password_hash)
+
+        async with session_factory.begin() as session:
+            authenticated_user, token = await AuthenticationService(
+                UserRepository(session)
+            ).authenticate("OWNER@example.com", "operator-entered-password")
+            assert authenticated_user.email == "owner@example.com"
+            assert authenticated_user.is_active is True
+            assert [role.name for role in authenticated_user.roles] == ["SUPER-ADMIN"]
+            assert token
 
         async with session_factory() as session:
             audit = await session.scalar(

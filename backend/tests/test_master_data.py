@@ -63,3 +63,48 @@ async def test_product_master_rejects_vendor_purchase_rate(client: AsyncClient) 
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+@pytest.mark.asyncio
+async def test_only_super_admin_can_persist_single_primary_organization(
+    client: AsyncClient,
+) -> None:
+    super_admin = await login(client, "superadmin@example.com", "super-admin-password")
+    admin = await login(client, "admin@example.com", "admin-user-password")
+    first = await client.post(
+        "/api/v1/master-data/organizations",
+        json={"code": "WC", "legal_name": "World Communication"},
+        headers=authorization(super_admin),
+    )
+    second = await client.post(
+        "/api/v1/master-data/organizations",
+        json={"code": "WC2", "legal_name": "World Communication Branch"},
+        headers=authorization(super_admin),
+    )
+    assert first.status_code == 201
+    assert second.status_code == 201
+
+    denied = await client.post(
+        f"/api/v1/master-data/organizations/{first.json()['id']}/set-primary",
+        headers=authorization(admin),
+    )
+    assert denied.status_code == 403
+
+    selected = await client.post(
+        f"/api/v1/master-data/organizations/{first.json()['id']}/set-primary",
+        headers=authorization(super_admin),
+    )
+    assert selected.status_code == 200
+    assert selected.json()["data"]["is_primary"] is True
+
+    replaced = await client.post(
+        f"/api/v1/master-data/organizations/{second.json()['id']}/set-primary",
+        headers=authorization(super_admin),
+    )
+    assert replaced.status_code == 200
+    listed = await client.get(
+        "/api/v1/master-data/organizations", headers=authorization(super_admin)
+    )
+    primaries = [item for item in listed.json()["items"] if item["data"]["is_primary"]]
+    assert [item["id"] for item in primaries] == [second.json()["id"]]
+    assert listed.json()["total"] == 2

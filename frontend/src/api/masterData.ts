@@ -27,6 +27,29 @@ export function createMasterData(
   });
 }
 
+export function updateMasterData(
+  token: string,
+  resource: string,
+  id: string,
+  data: Record<string, unknown>,
+): Promise<MasterRecord> {
+  return apiRequest<MasterRecord>(`/master-data/${resource}/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
+export function setPrimaryOrganization(
+  token: string,
+  organizationId: string,
+): Promise<MasterRecord> {
+  return apiRequest<MasterRecord>(`/master-data/organizations/${organizationId}/set-primary`, {
+    method: "POST",
+    token,
+  });
+}
+
 export function setMasterDataActive(
   token: string,
   resource: string,

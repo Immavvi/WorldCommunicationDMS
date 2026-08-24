@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.auth import AuditLog
-from app.models.master_data import Party, TermsConditionVersion
+from app.models.master_data import Organization, Party, TermsConditionVersion
 
 
 class MasterDataRepository:
@@ -39,6 +39,13 @@ class MasterDataRepository:
             return None
         return await self.session.scalar(
             select(model).where(func.lower(model.code) == code.lower())
+        )
+
+    async def lock_organizations(self) -> list[Organization]:
+        return list(
+            await self.session.scalars(
+                select(Organization).order_by(Organization.id).with_for_update()
+            )
         )
 
     async def save(self, record):

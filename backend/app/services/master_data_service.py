@@ -375,6 +375,28 @@ class MasterDataService:
         )
         return self.serialize(resource, record)
 
+    async def set_primary_organization(
+        self, organization_id: UUID, actor_id: UUID
+    ) -> MasterDataResponse:
+        organizations = await self.repository.lock_organizations()
+        target = next((item for item in organizations if item.id == organization_id), None)
+        if target is None:
+            raise AppError(404, "master_record_not_found", "Organization does not exist.")
+        previous_primary_ids = [str(item.id) for item in organizations if item.is_primary]
+        for organization in organizations:
+            organization.is_primary = organization.id == organization_id
+        await self.repository.save(target)
+        response = self.serialize("organizations", target)
+        self.repository.audit(
+            actor_user_id=actor_id,
+            action="set_primary",
+            entity_type="organizations",
+            entity_id=target.id,
+            old_value={"primary_organization_ids": previous_primary_ids},
+            new_value={"primary_organization_id": str(target.id)},
+        )
+        return response
+
     def _values(self, resource: str, payload: MasterDataWrite, *, creating: bool) -> dict[str, Any]:
         supplied = payload.model_dump(exclude_unset=True)
         allowed = RESOURCE_FIELDS[resource]

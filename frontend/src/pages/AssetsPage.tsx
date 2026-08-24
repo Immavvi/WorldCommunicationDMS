@@ -87,7 +87,8 @@ export function AssetsPage() {
         <input aria-label="Search assets" className="bg-slate-900 p-2" value={search} onChange={(event) => setSearch(event.target.value)} />
         <button type="button" onClick={() => void refresh()}>Search</button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto asset-register">
+        <h2>Asset register</h2>
         <table className="w-full text-left text-sm">
           <thead><tr><th>Asset</th><th>Serial</th><th>Product / OEM / Model</th><th>Status</th><th>Project</th><th>Location</th><th>Warranty</th></tr></thead>
           <tbody>{assets.map((asset) => (
