@@ -14,10 +14,12 @@ from app.api.v1.payments import router as payments_router
 from app.api.v1.procurement import router as procurement_router
 from app.api.v1.quotations import router as quotations_router
 from app.api.v1.receiving import router as receiving_router
+from app.api.v1.reporting import router as reporting_router
 from app.api.v1.users import router as users_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
+api_router.include_router(reporting_router)
 api_router.include_router(attention_router)
 api_router.include_router(payments_router)
 api_router.include_router(assets_router)

@@ -229,6 +229,8 @@ It also includes customer-payment receipts, controlled allocation to issued Tax 
 and derived receivable/outstanding positions.
 The authenticated application also provides an operational Alerts inbox, configurable
 warning rules, idempotent condition evaluation, and private in-app Notifications.
+Role-aware management dashboards and filterable operational/financial reports provide
+drill-down and Excel export without introducing separate reporting sources of truth.
 
 Serialized Assets originate from verified accepted receipt lines, retain PO/GRN and
 Project/LOA traceability, use centralized `AST-` numbering, and preserve append-oriented
@@ -316,4 +318,8 @@ npm run build
 - Phase 15 attention layer: configurable workflow, delivery, discrepancy, deadline, warranty,
   Asset exception and receivable Alerts with acknowledgement, resolution, deduplication,
   role-targeted Notifications, and a protected manual evaluator
-- PostgreSQL migrations: additive foundations through Alerts and in-app Notifications
+- Phase 16 reporting: role-aware Dashboard, Project/contract and LOA reconciliation,
+  procurement, logistics, Asset, billing, receivable, payment and Alert registers with
+  contextual filters, pagination and permission-safe Excel exports
+- PostgreSQL migrations: additive foundations through Alerts and in-app Notifications;
+  reporting derives directly from existing authoritative tables without new schema

@@ -85,6 +85,15 @@ vi.mock("../src/api/attention", () => ({
   unreadCount: vi.fn().mockResolvedValue({count:1}), markRead: vi.fn(), markAllRead: vi.fn(),
 }));
 
+vi.mock("../src/api/reporting", () => ({
+  getDashboard: vi.fn().mockResolvedValue({operational:{active_projects:3,
+    overdue_deliveries:1,my_attention:2,unread_notifications:1},financial:{invoice_value:"125000.00",
+    received:"50000.00",outstanding:"75000.00",overdue_invoices:1}}),
+  getReport: vi.fn().mockResolvedValue([{id:"po-1",number:"PO-000001",vendor:"Vendor",
+    project:"Project",status:"ISSUED",ordered_quantity:"10.0000"}]),
+  exportReport: vi.fn(),
+}));
+
 vi.mock("../src/api/dispatch", () => ({
   listChallans: vi.fn().mockResolvedValue([]),
   getDispatchAvailability: vi.fn().mockResolvedValue([]),
@@ -163,6 +172,30 @@ afterEach(cleanup);
 test("redirects unauthenticated visitors to the login page", () => {
   render(<App />);
   expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+});
+
+test("shows role-aware management dashboard and drill-down cards", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  mockedGetCurrentUser.mockResolvedValue({id:"super-id",email:"super@example.com",
+    is_active:true,roles:[{name:"SUPER-ADMIN"}]});
+  render(<App />);
+  expect(await screen.findByRole("heading",{name:"Dashboard"})).toBeInTheDocument();
+  expect(screen.getByText("Active Projects")).toBeInTheDocument();
+  expect(screen.getByText("Finance & Collections")).toBeInTheDocument();
+  expect(screen.getByText("₹1,25,000.00")).toBeInTheDocument();
+  expect(screen.getByRole("link",{name:"Reports"})).toBeInTheDocument();
+});
+
+test("shows grouped reports, filters, table and Excel control", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({},"","/reports?report=purchase-orders");
+  mockedGetCurrentUser.mockResolvedValue({id:"admin-id",email:"admin@example.com",
+    is_active:true,roles:[{name:"ADMIN"}]});
+  render(<App />);
+  expect(await screen.findByRole("heading",{name:"Reports"})).toBeInTheDocument();
+  expect(screen.getByText("PO-000001")).toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"Export Excel"})).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"receivables"})).not.toBeInTheDocument();
 });
 
 test("shows user management only to a SUPER-ADMIN and logs out", async () => {

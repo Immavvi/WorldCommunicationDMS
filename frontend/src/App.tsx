@@ -13,7 +13,8 @@ import { PurchaseOrderDetailPage } from "./pages/PurchaseOrderDetailPage";
 import { RequirementDetailPage } from "./pages/RequirementDetailPage";
 import { ReceivingPage } from "./pages/ReceivingPage";
 import { ReceiptDetailPage } from "./pages/ReceiptDetailPage";
-import { StatusPage } from "./pages/StatusPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { TaxInvoicesPage } from "./pages/TaxInvoicesPage";
 import { TaxInvoiceDetailPage } from "./pages/TaxInvoiceDetailPage";
@@ -37,7 +38,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forbidden" element={<ForbiddenPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<StatusPage />} />
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
               <Route path="/master-data" element={<MasterDataPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/loas/:loaId" element={<LoaDetailPage />} />
