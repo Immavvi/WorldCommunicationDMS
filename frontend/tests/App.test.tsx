@@ -293,6 +293,8 @@ test("shows Invoice tax mode due date totals and SUPER-ADMIN approval", async ()
   expect(screen.getByText(/Place of supply: West Bengal/)).toBeInTheDocument();
   expect(screen.getByText("Due date: 2026-09-26")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Download / Preview PDF" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Download / Preview Excel" })).toBeInTheDocument();
 });
 
 test("shows readable independent Quotation creation", async () => {

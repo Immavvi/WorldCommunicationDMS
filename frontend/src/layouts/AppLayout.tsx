@@ -1,10 +1,23 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import { DocumentExports } from "../components/DocumentExports";
+
+const exportRoutes = [
+  [/^\/quotations\/([^/]+)$/, "quotation"],
+  [/^\/purchase-orders\/([^/]+)$/, "purchase-order"],
+  [/^\/proforma-invoices\/([^/]+)$/, "proforma-invoice"],
+  [/^\/tax-invoices\/([^/]+)$/, "tax-invoice"],
+  [/^\/supply-challans\/([^/]+)$/, "supply-challan"],
+] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { logout, user } = useAuth();
+  const location = useLocation();
+  const exportRoute = exportRoutes
+    .map(([pattern, type]) => ({ match: location.pathname.match(pattern), type }))
+    .find((candidate) => candidate.match);
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-slate-100">
       <div className="mx-auto max-w-4xl">
@@ -25,6 +38,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <button className="text-cyan-400" onClick={logout} type="button">Logout</button>
             </div>
           </header>
+        )}
+        {user && exportRoute?.match && (
+          <DocumentExports type={exportRoute.type} id={exportRoute.match[1]} />
         )}
         {children}
       </div>

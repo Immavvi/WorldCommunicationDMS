@@ -819,3 +819,360 @@ KNOWN ISSUES:
 
 NEXT MODULE:
 - ...
+---
+
+## 32. Repository Documentation Rules
+
+### AGENTS.md
+
+`AGENTS.md` contains permanent instructions for AI coding agents working on WCDMS.
+
+Update `AGENTS.md` only when:
+
+- Development rules change.
+- Architecture rules or constraints change.
+- Testing or verification requirements change.
+- Repository conventions change.
+- Security or Git rules change.
+- A new permanent instruction for coding agents is introduced.
+
+Do not update `AGENTS.md` merely because a development phase or feature was completed.
+
+Do not use `AGENTS.md` as a development diary or append routine phase-completion reports to it.
+
+### README.md
+
+`README.md` describes the current WCDMS application for developers and maintainers.
+
+Update `README.md` when:
+
+- A module or major feature is added or materially changed.
+- Application architecture changes.
+- Installation or setup instructions change.
+- Runtime dependencies change.
+- Database or migration setup changes.
+- Backend or frontend startup procedures change.
+- Important operational usage changes.
+
+Do not use `README.md` as a chronological development diary.
+
+Do not append repetitive phase-completion reports, temporary test counts,
+temporary implementation notes, or per-phase file lists.
+
+Keep `README.md` consolidated so that it describes the current state of WCDMS.
+
+### Completion Reports
+
+Detailed Codex completion reports should normally remain in the Codex
+conversation/output.
+
+Do not automatically copy completion reports into `README.md` or `AGENTS.md`
+unless the information has lasting documentation value.
+
+Test counts, temporary QA results, migration verification output, temporary
+sample-file locations, and per-phase Git status do not normally belong in
+permanent repository documentation.
+
+---
+
+## 33. Authoritative World Communication Document Templates
+
+Files under:
+
+`document_templates/`
+
+are the authoritative World Communication visual references for supported
+business documents.
+
+These templates include approved formats for documents such as:
+
+- Purchase Order
+- Proforma Invoice
+- Tax Invoice
+- Quotation
+- Supply / Delivery Challan
+- Other approved World Communication documents added later
+
+Do not redesign approved documents based on agent preferences.
+
+Do not replace approved World Communication formats with generic invoice,
+quotation, PO, challan, or document layouts.
+
+Before implementing or materially changing document rendering, inspect the
+actual relevant source template under `document_templates/`.
+
+### Template vs Business Data
+
+The files under `document_templates/` define PRESENTATION and VISUAL STRUCTURE.
+
+They are not authoritative sources for transactional business data,
+calculations, quantities, rates, taxes, document numbers, workflow states,
+party identities, or other live business values.
+
+Authoritative business values must come from WCDMS backend records and
+historical snapshots.
+
+Generated documents must dynamically populate information from the relevant
+WCDMS records.
+
+Never hard-code sample or test values into production document rendering,
+including:
+
+- Customer names
+- Indian Railways
+- Railway zones or divisions
+- Railway authorities
+- Vendor / supplier names
+- OEM names
+- Project references
+- LOA numbers
+- LOA dates
+- Addresses
+- Billing addresses
+- Shipping addresses
+- Consignees
+- Product descriptions
+- Models / part numbers
+- Quantities
+- Rates
+- Taxes
+- Document dates
+- Reference numbers
+- Bank information
+- Payment terms
+
+If a generated test/sample document displays values such as `Indian Railways`,
+those values must originate from the test/sample record supplied to the
+renderer and must not be embedded as production defaults.
+
+### Historical Document Integrity
+
+Issued historical documents must remain reproducible from persisted
+transactional data and historical snapshots.
+
+Do not populate an old issued document from mutable current master data when
+the appropriate historical snapshot exists.
+
+If a required historical value was not captured at issuance, identify the
+missing snapshot requirement rather than silently substituting current master
+data.
+
+### Document-Specific Business Context
+
+Different document types must expose the business information appropriate to
+their purpose.
+
+Do not make all documents generic forms with only the document title changed.
+
+For example:
+
+#### Purchase Order
+
+Where applicable, include:
+
+- Vendor / Supplier
+- Vendor address
+- Vendor GSTIN
+- Buyer organization
+- Billing address
+- Ship-To / Delivery address
+- Project / Work reference
+- LOA reference and date
+- Procurement requirement reference
+- OEM / Make
+- Model / Part Number
+- HSN
+- UOM
+- Quantity
+- Purchase rate
+- Taxes
+- Payment terms
+- Terms & Conditions
+
+A Purchase Order must identify the counterparty as Vendor / Supplier, not
+Customer.
+
+Vendor and OEM are separate business concepts and must not be assumed to be
+the same entity.
+
+#### Proforma Invoice
+
+Where applicable, include:
+
+- Customer
+- Customer GSTIN
+- Bill-To
+- Ship-To
+- Project / Work reference
+- LOA reference and date
+- Railway division
+- Railway authority / consignee
+- Challan / dispatch references
+- Relevant reference dates
+- Payment terms
+- Bank details
+- Terms & Conditions
+
+#### Tax Invoice
+
+Where applicable, include:
+
+- Customer
+- Customer GSTIN
+- Bill-To
+- Ship-To
+- Invoice number and date
+- Due date
+- Place of supply
+- Project / Work reference
+- LOA reference and date
+- Railway division / authority
+- PI reference
+- Challan reference
+- Relevant source/reference dates
+- Payment terms
+- Bank details
+- Terms & Conditions
+
+#### Quotation
+
+Where applicable, include:
+
+- Customer
+- Customer GSTIN
+- Quotation number
+- Quotation date
+- Revision
+- Validity
+- Customer enquiry / tender reference
+- Reference date
+- Project / Work reference
+- Railway division / authority
+- Bill-To / customer address
+- Ship-To where applicable
+- Payment terms
+- Terms & Conditions
+
+#### Supply / Delivery Challan
+
+Where applicable, include:
+
+- Challan number and date
+- Customer
+- Project / Work reference
+- LOA reference and date
+- Railway division
+- Consignee / receiving authority
+- Delivery / Ship-To address
+- Dispatch-From address
+- Transporter
+- Vehicle number
+- LR / RR / transport reference
+- E-Way Bill reference where available
+- Dispatch / delivery references
+- Receiver acknowledgement
+
+Railway Challans must remain non-financial and must not expose procurement
+rates, vendor costs, purchase taxes, margins, or other confidential commercial
+information.
+
+### Dynamic Layout and Pagination
+
+Approved templates may contain fixed rows or fixed visual structures because
+they originated as manually maintained Excel documents.
+
+WCDMS-generated documents must safely adapt those designs for dynamic data.
+
+Support:
+
+- Single-line documents
+- Multi-line documents
+- Large item counts
+- Long product descriptions
+- Long addresses
+- Long notes
+- Long Terms & Conditions
+- Multi-page documents
+
+Preserve the approved World Communication visual language while preventing:
+
+- Clipping
+- Overlapping
+- Cut-off text
+- Broken tables
+- Uncontrolled page breaks
+- Orphan headings
+- Poorly fragmented Terms & Conditions
+
+Table headings should repeat on continuation pages where appropriate.
+
+Terms & Conditions should paginate as a deliberate section.
+
+Do not leave a `Terms & Conditions` heading orphaned at the bottom of a page.
+
+Where long Terms & Conditions require multiple pages, split them between
+logical terms or paragraphs where practical and use a clear continuation
+heading where appropriate.
+
+Do not place an Authorised Signatory block in the middle of a continuing
+Terms & Conditions section.
+
+### Logo and Corporate Identity
+
+Use the official World Communication logo supplied through the approved
+templates or repository assets.
+
+Do not fabricate, approximate, redraw, or substitute an unofficial logo when
+the approved asset is available.
+
+Corporate styling should follow the authoritative World Communication
+templates.
+
+### PDF and Excel
+
+PDF and Excel versions of the same business document should represent the same
+authoritative business record.
+
+They may use renderer-specific technical adaptations, but they must not
+contradict each other in:
+
+- Document number
+- Date
+- Party
+- Project
+- LOA
+- Addresses
+- Items
+- Quantities
+- Rates
+- Taxes
+- Totals
+- Terms
+- Bank information
+- Other business references
+
+PDF generation must prioritize reliable print output and pagination.
+
+Excel generation must preserve typed numeric values and usable spreadsheet
+structure while following the approved visual template as closely as practical.
+
+Do not rely on spreadsheet formulas as the authoritative source of WCDMS
+business calculations.
+
+### Template and Output Directories
+
+`document_templates/`
+
+contains permanent authoritative source/reference templates.
+
+`outputs/`
+
+contains generated documents, QA samples, previews, and other output artifacts.
+
+Generated output files must never be treated as authoritative source templates.
+
+Temporary visual-QA artifacts should not be committed unless they are
+intentionally required as test fixtures.
+
+Repository ignore rules for generated outputs must not accidentally ignore
+`document_templates/` or required document-engine assets.
