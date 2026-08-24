@@ -19,6 +19,9 @@ class UserRepository:
     async def get_role_by_name(self, name: str) -> Role | None:
         return await self.session.scalar(select(Role).where(Role.name == name))
 
+    async def lock_role_by_name(self, name: str) -> Role | None:
+        return await self.session.scalar(select(Role).where(Role.name == name).with_for_update())
+
     async def get_by_id(self, user_id: UUID) -> User | None:
         return await self.session.scalar(
             select(User).options(USER_WITH_ROLES).where(User.id == user_id)
@@ -39,6 +42,15 @@ class UserRepository:
         self.session.add(user)
         await self.session.flush()
         return user
+
+    async def lock_active_super_admins(self) -> list[User]:
+        result = await self.session.scalars(
+            select(User)
+            .join(User.roles)
+            .where(User.is_active.is_(True), Role.name == "SUPER-ADMIN")
+            .with_for_update()
+        )
+        return list(result.unique())
 
     async def add_audit_log(
         self,

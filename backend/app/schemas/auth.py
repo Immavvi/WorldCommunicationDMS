@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -19,7 +20,11 @@ class UserResponse(BaseModel):
 
     id: UUID
     email: EmailStr
+    display_name: str | None
     is_active: bool
+    must_change_password: bool
+    last_login_at: datetime | None
+    created_at: datetime
     roles: list[RoleResponse]
 
 

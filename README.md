@@ -268,12 +268,24 @@ uvicorn app.main:app --reload
 
 The health endpoint is available at `http://127.0.0.1:8000/api/v1/health`.
 
-The initial SUPER-ADMIN must be created only after migrations have run, using the interactive command below. It reads the password from the terminal and refuses to run if any user already exists:
+The initial SUPER-ADMIN must be created only after migrations have run, using the interactive
+command below. It reads the password twice from the terminal, stores only its secure hash, writes
+an audit record, and refuses to run if any user already exists. Use a real operator identity in
+each environment; never place bootstrap credentials in source, migrations, fixtures, or shell
+history.
 
 ```bash
 cd backend
-python -m app.scripts.bootstrap_super_admin --email admin@example.com
+python -m app.scripts.bootstrap_super_admin --email owner@example.com --name "System Owner"
 ```
+
+After sign-in, SUPER-ADMIN users can open **Administration** to manage application users, view
+safe runtime/database status, inspect concurrency-safe document numbering, and navigate to the
+existing organization, bank, and alert-rule configuration. Newly created users and accounts
+whose password is administratively reset must change their temporary password before accessing
+business modules. The system prevents deactivation or demotion of the last active SUPER-ADMIN.
+Database migrations and backups remain controlled deployment operations and are intentionally
+not executable from the browser.
 
 ### Frontend
 
@@ -321,5 +333,8 @@ npm run build
 - Phase 16 reporting: role-aware Dashboard, Project/contract and LOA reconciliation,
   procurement, logistics, Asset, billing, receivable, payment and Alert registers with
   contextual filters, pagination and permission-safe Excel exports
-- PostgreSQL migrations: additive foundations through Alerts and in-app Notifications;
+- Phase 17 administration: audited one-time initial SUPER-ADMIN bootstrap, browser-based user
+  lifecycle and password controls, last-active-SUPER-ADMIN protection, safe system health and
+  read-only numbering visibility, plus production configuration guidance
+- PostgreSQL migrations: additive foundations through System Administration metadata;
   reporting derives directly from existing authoritative tables without new schema

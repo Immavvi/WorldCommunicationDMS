@@ -319,6 +319,9 @@ Authenticated User
 
 The frontend may hide unavailable actions, but the backend must always enforce authorization.
 
+The last active `SUPER-ADMIN` must never be deactivated or demoted; enforce this invariant
+transactionally on the backend.
+
 ---
 
 ## 11. Workflow

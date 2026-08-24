@@ -2,11 +2,21 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import App from "../src/App";
-import { getCurrentUser } from "../src/api/auth";
+import { changePassword, getCurrentUser } from "../src/api/auth";
+import { createUser, listUsers, resetUserPassword, setUserActive } from "../src/api/users";
 
 vi.mock("../src/api/auth", () => ({
   getCurrentUser: vi.fn(),
   login: vi.fn(),
+  changePassword: vi.fn(),
+}));
+
+vi.mock("../src/api/users", () => ({
+  listUsers: vi.fn().mockResolvedValue({ items: [], offset: 0, limit: 50 }),
+  createUser: vi.fn().mockResolvedValue({}),
+  assignUserRole: vi.fn().mockResolvedValue({}),
+  setUserActive: vi.fn().mockResolvedValue({}),
+  resetUserPassword: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../src/api/contracts", () => ({
@@ -94,6 +104,17 @@ vi.mock("../src/api/reporting", () => ({
   exportReport: vi.fn(),
 }));
 
+vi.mock("../src/api/administration", () => ({
+  getNumbering: vi.fn().mockResolvedValue([{
+    id: "series-1", document_type: "PURCHASE_ORDER", prefix: "PO-",
+    next_number: 42, padding: 6, preview: "PO-000042",
+  }]),
+  getSystemStatus: vi.fn().mockResolvedValue({
+    status: "healthy", application: "WCDMS", version: "0.1.0",
+    environment: "test", database: "connected", schema_revision: "test-schema",
+  }),
+}));
+
 vi.mock("../src/api/dispatch", () => ({
   listChallans: vi.fn().mockResolvedValue([]),
   getDispatchAvailability: vi.fn().mockResolvedValue([]),
@@ -160,6 +181,11 @@ vi.mock("../src/api/quotations", () => ({
 }));
 
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
+const mockedChangePassword = vi.mocked(changePassword);
+const mockedCreateUser = vi.mocked(createUser);
+const mockedListUsers = vi.mocked(listUsers);
+const mockedResetUserPassword = vi.mocked(resetUserPassword);
+const mockedSetUserActive = vi.mocked(setUserActive);
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -209,7 +235,7 @@ test("shows user management only to a SUPER-ADMIN and logs out", async () => {
 
   render(<App />);
 
-  expect(await screen.findByRole("link", { name: "Users" })).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Administration" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Logout" }));
   expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   expect(sessionStorage.getItem("wcdms.access-token")).toBeNull();
@@ -228,7 +254,87 @@ test("denies an ADMIN direct access to the users page", async () => {
   render(<App />);
 
   expect(await screen.findByRole("heading", { name: "Access denied" })).toBeInTheDocument();
-  await waitFor(() => expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByRole("link", { name: "Administration" })).not.toBeInTheDocument());
+});
+
+test("shows safe administration status and read-only numbering to SUPER-ADMIN", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/administration");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "super-admin-id", email: "superadmin@example.com", is_active: true,
+    roles: [{ name: "SUPER-ADMIN" }],
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole("heading", { name: "Administration" })).toBeInTheDocument();
+  expect(await screen.findByText("PO-000042")).toBeInTheDocument();
+  expect(screen.getByText("test-schema")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Users & Access" })).toHaveAttribute("href", "/users");
+});
+
+test("forces a temporary-password user to the password change page", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true,
+    must_change_password: true, roles: [{ name: "ADMIN" }],
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole("heading", { name: "My Profile" })).toBeInTheDocument();
+  expect(screen.getByText(/must change the temporary password/i)).toBeInTheDocument();
+});
+
+test("SUPER-ADMIN can create, deactivate, and reset a user from the register", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/users");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "super-id", email: "super@example.com", is_active: true,
+    roles: [{ name: "SUPER-ADMIN" }],
+  });
+  mockedListUsers.mockResolvedValue({ items: [{
+    id: "user-1", display_name: "Operations Admin", email: "ops@example.com",
+    is_active: true, roles: [{ name: "ADMIN" }],
+  }], offset: 0, limit: 50 });
+
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Users" })).toBeInTheDocument();
+  fireEvent.change(screen.getByPlaceholderText("Display name"), { target: { value: "New User" } });
+  fireEvent.change(screen.getByPlaceholderText("Email"), { target: { value: "new@example.com" } });
+  fireEvent.change(screen.getByPlaceholderText("Temporary password"), { target: { value: "temporary-password" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create user" }));
+  await waitFor(() => expect(mockedCreateUser).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+  await waitFor(() => expect(mockedSetUserActive).toHaveBeenCalledWith("valid-token", "user-1", false));
+  fireEvent.click(screen.getByRole("button", { name: "Reset password" }));
+  fireEvent.change(screen.getByPlaceholderText("New password"), { target: { value: "replacement-password" } });
+  fireEvent.change(screen.getByPlaceholderText("Reset reason"), { target: { value: "Recovery" } });
+  fireEvent.click(screen.getByRole("button", { name: "Set password" }));
+  await waitFor(() => expect(mockedResetUserPassword).toHaveBeenCalledWith(
+    "valid-token", "user-1", "replacement-password", "Recovery",
+  ));
+});
+
+test("a logged-in user can submit their own password change", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/profile");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true,
+    roles: [{ name: "ADMIN" }],
+  });
+  mockedChangePassword.mockResolvedValue(undefined);
+
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "My Profile" })).toBeInTheDocument();
+  fireEvent.change(screen.getByPlaceholderText("Current password"), { target: { value: "current-password" } });
+  fireEvent.change(screen.getByPlaceholderText("New password"), { target: { value: "replacement-password" } });
+  fireEvent.change(screen.getByPlaceholderText("Confirm new password"), { target: { value: "replacement-password" } });
+  fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+  await waitFor(() => expect(mockedChangePassword).toHaveBeenCalledWith(
+    "valid-token", "current-password", "replacement-password",
+  ));
 });
 
 test("shows Master Data navigation to an ADMIN", async () => {

@@ -12,6 +12,9 @@ export function ProtectedRoute({ requiredRole }: { requiredRole?: "SUPER-ADMIN" 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
+  if (user.must_change_password && location.pathname !== "/profile") {
+    return <Navigate to="/profile" replace />;
+  }
   if (requiredRole && !user.roles.some((role) => role.name === requiredRole)) {
     return <Navigate to="/forbidden" replace />;
   }

@@ -38,6 +38,10 @@ async def get_current_user(
 
 def require_roles(*allowed_roles: str):
     async def role_guard(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.must_change_password:
+            raise AppError(
+                403, "password_change_required", "Change the temporary password before continuing."
+            )
         if not {role.name for role in current_user.roles}.intersection(allowed_roles):
             raise AppError(
                 403,

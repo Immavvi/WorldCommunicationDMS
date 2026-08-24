@@ -15,7 +15,11 @@ export type Role = { name: "SUPER-ADMIN" | "ADMIN" };
 export type User = {
   id: string;
   email: string;
+  display_name?: string | null;
   is_active: boolean;
+  must_change_password?: boolean;
+  last_login_at?: string | null;
+  created_at?: string;
   roles: Role[];
 };
 

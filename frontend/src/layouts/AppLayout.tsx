@@ -39,7 +39,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link to="/payments">Payments</Link>
               <Link to="/receivables">Receivables</Link>
               <Link to="/quotations">Quotations</Link>
-              {user.roles.some((role) => role.name === "SUPER-ADMIN") && <Link to="/users">Users</Link>}
+              {user.roles.some((role) => role.name === "SUPER-ADMIN") && <Link to="/administration">Administration</Link>}
+              <Link to="/profile">My Profile</Link>
               <span>{user.roles.map((role) => role.name).join(", ")}</span>
               <NotificationBell />
               <button className="text-cyan-400" onClick={logout} type="button">Logout</button>

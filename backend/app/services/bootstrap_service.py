@@ -15,13 +15,29 @@ class BootstrapService:
     def __init__(self, session: AsyncSession) -> None:
         self.repository = UserRepository(session)
 
-    async def create_initial_super_admin(self, email: str, password: str) -> User:
+    async def create_initial_super_admin(
+        self, email: str, password: str, display_name: str | None = None
+    ) -> User:
+        # The role row serializes concurrent bootstrap attempts on PostgreSQL.
+        role = await self.repository.lock_role_by_name(SUPER_ADMIN_ROLE)
+        if role is None:
+            raise AppError(500, "role_not_initialized", "SUPER-ADMIN role is not available.")
         if await self.repository.count_users():
             raise AppError(
                 409, "bootstrap_unavailable", "Initial user bootstrap has already completed."
             )
-        role = await self.repository.get_role_by_name(SUPER_ADMIN_ROLE)
-        if role is None:
-            raise AppError(500, "role_not_initialized", "SUPER-ADMIN role is not available.")
-        user = User(email=email.lower(), password_hash=hash_password(password), roles=[role])
-        return await self.repository.create(user)
+        user = User(
+            email=email.lower(),
+            display_name=display_name.strip() if display_name else None,
+            password_hash=hash_password(password),
+            roles=[role],
+            must_change_password=False,
+        )
+        await self.repository.create(user)
+        await self.repository.add_audit_log(
+            actor_user_id=None,
+            action="bootstrap_super_admin",
+            entity_id=user.id,
+            new_value={"email": user.email, "roles": [SUPER_ADMIN_ROLE], "is_active": True},
+        )
+        return user

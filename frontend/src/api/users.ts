@@ -8,7 +8,7 @@ export function listUsers(token: string): Promise<UserListResponse> {
 
 export function createUser(
   token: string,
-  input: { email: string; password: string; role_name: "SUPER-ADMIN" | "ADMIN" },
+  input: { display_name: string; email: string; password: string; role_name: "SUPER-ADMIN" | "ADMIN"; is_active: boolean },
 ): Promise<User> {
   return apiRequest<User>("/users", { method: "POST", token, body: JSON.stringify(input) });
 }
@@ -33,10 +33,10 @@ export function assignUserRole(
   });
 }
 
-export function resetUserPassword(token: string, userId: string, newPassword: string): Promise<void> {
+export function resetUserPassword(token: string,userId: string,newPassword: string,reason: string): Promise<void> {
   return apiRequest<void>(`/users/${userId}/password`, {
     method: "PUT",
     token,
-    body: JSON.stringify({ new_password: newPassword }),
+    body: JSON.stringify({ new_password: newPassword, reason }),
   });
 }

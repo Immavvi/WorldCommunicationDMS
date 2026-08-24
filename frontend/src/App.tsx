@@ -16,6 +16,8 @@ import { ReceiptDetailPage } from "./pages/ReceiptDetailPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { UsersPage } from "./pages/UsersPage";
+import { AdministrationPage } from "./pages/AdministrationPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { TaxInvoicesPage } from "./pages/TaxInvoicesPage";
 import { TaxInvoiceDetailPage } from "./pages/TaxInvoiceDetailPage";
 import { ProformaInvoicesPage } from "./pages/ProformaInvoicesPage";
@@ -60,9 +62,11 @@ export default function App() {
               <Route path="/tax-invoices/:invoiceId" element={<TaxInvoiceDetailPage />} />
               <Route path="/quotations" element={<QuotationsPage />} />
               <Route path="/quotations/:quotationId" element={<QuotationDetailPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
             <Route element={<ProtectedRoute requiredRole="SUPER-ADMIN" />}>
               <Route path="/users" element={<UsersPage />} />
+              <Route path="/administration" element={<AdministrationPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

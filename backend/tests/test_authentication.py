@@ -1,5 +1,8 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+
+from app.models.auth import AuditLog
 
 
 async def login(client: AsyncClient, email: str, password: str) -> str:
@@ -149,3 +152,158 @@ async def test_password_change_and_reset_invalidate_existing_tokens(client: Asyn
         )
     ).status_code == 401
     assert await login(client, "admin@example.com", "reset-admin-password")
+
+
+@pytest.mark.asyncio
+async def test_last_active_super_admin_cannot_be_deactivated_or_demoted(
+    client: AsyncClient,
+) -> None:
+    token = await login(client, "superadmin@example.com", "super-admin-password")
+    users = await client.get("/api/v1/users", headers=authorization(token))
+    super_id = next(
+        user["id"] for user in users.json()["items"] if user["email"] == "superadmin@example.com"
+    )
+
+    deactivate = await client.patch(
+        f"/api/v1/users/{super_id}/active",
+        json={"is_active": False},
+        headers=authorization(token),
+    )
+    assert deactivate.status_code == 409
+    assert deactivate.json()["error"]["code"] == "last_super_admin"
+
+    demote = await client.put(
+        f"/api/v1/users/{super_id}/role",
+        json={"role_name": "ADMIN"},
+        headers=authorization(token),
+    )
+    assert demote.status_code == 409
+    assert demote.json()["error"]["code"] == "last_super_admin"
+
+
+@pytest.mark.asyncio
+async def test_temporary_password_requires_change_before_module_access(client: AsyncClient) -> None:
+    super_token = await login(client, "superadmin@example.com", "super-admin-password")
+    created = await client.post(
+        "/api/v1/users",
+        json={
+            "display_name": "Second Administrator",
+            "email": "second.admin@example.com",
+            "password": "temporary-password",
+            "role_name": "ADMIN",
+        },
+        headers=authorization(super_token),
+    )
+    assert created.status_code == 201
+    assert created.json()["must_change_password"] is True
+
+    temporary_token = await login(client, "second.admin@example.com", "temporary-password")
+    denied = await client.get("/api/v1/projects", headers=authorization(temporary_token))
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "password_change_required"
+    me = await client.get("/api/v1/auth/me", headers=authorization(temporary_token))
+    assert me.status_code == 200
+
+    changed = await client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "temporary-password", "new_password": "permanent-password"},
+        headers=authorization(temporary_token),
+    )
+    assert changed.status_code == 204
+    permanent_token = await login(client, "second.admin@example.com", "permanent-password")
+    projects = await client.get("/api/v1/projects", headers=authorization(permanent_token))
+    assert projects.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_administration_endpoints_are_safe_and_super_admin_only(client: AsyncClient) -> None:
+    admin_token = await login(client, "admin@example.com", "admin-user-password")
+    assert (
+        await client.get("/api/v1/admin/system-status", headers=authorization(admin_token))
+    ).status_code == 403
+
+    super_token = await login(client, "superadmin@example.com", "super-admin-password")
+    status = await client.get("/api/v1/admin/system-status", headers=authorization(super_token))
+    assert status.status_code == 200
+    assert status.json()["database"] == "connected"
+    assert "database_url" not in status.json()
+
+    numbering = await client.get("/api/v1/admin/numbering", headers=authorization(super_token))
+    assert numbering.status_code == 200
+    assert numbering.json()[0].keys() == {
+        "id", "document_type", "prefix", "next_number", "padding", "preview"
+    }
+
+
+@pytest.mark.asyncio
+async def test_user_administration_actions_are_audited_without_credentials(
+    client: AsyncClient,
+) -> None:
+    token = await login(client, "superadmin@example.com", "super-admin-password")
+    created = await client.post(
+        "/api/v1/users",
+        json={
+            "display_name": "Audited User",
+            "email": "audited@example.com",
+            "password": "temporary-password",
+            "role_name": "ADMIN",
+        },
+        headers=authorization(token),
+    )
+    assert created.status_code == 201
+    user_id = created.json()["id"]
+    duplicate = await client.post(
+        "/api/v1/users",
+        json={
+            "email": "AUDITED@example.com",
+            "password": "another-password",
+            "role_name": "ADMIN",
+        },
+        headers=authorization(token),
+    )
+    assert duplicate.status_code == 409
+
+    assert (
+        await client.put(
+            f"/api/v1/users/{user_id}/role",
+            json={"role_name": "SUPER-ADMIN"},
+            headers=authorization(token),
+        )
+    ).status_code == 200
+    assert (
+        await client.patch(
+            f"/api/v1/users/{user_id}/active",
+            json={"is_active": False},
+            headers=authorization(token),
+        )
+    ).status_code == 200
+    assert (
+        await client.patch(
+            f"/api/v1/users/{user_id}/active",
+            json={"is_active": True},
+            headers=authorization(token),
+        )
+    ).status_code == 200
+    assert (
+        await client.put(
+            f"/api/v1/users/{user_id}/password",
+            json={"new_password": "reset-password", "reason": "Access recovery"},
+            headers=authorization(token),
+        )
+    ).status_code == 204
+
+    async with client._session_factory() as session:
+        logs = list(
+            await session.scalars(
+                select(AuditLog).where(
+                    AuditLog.entity_type == "user", AuditLog.entity_id == user_id
+                )
+            )
+        )
+    assert {log.action for log in logs} >= {
+        "create", "assign_role", "deactivate", "activate", "reset_password"
+    }
+    assert all("password_hash" not in str(log.new_value).lower() for log in logs)
+    assert all("reset-password" not in str(log.new_value) for log in logs)
+    reset_log = next(log for log in logs if log.action == "reset_password")
+    assert reset_log.reason == "Access recovery"

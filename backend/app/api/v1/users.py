@@ -55,7 +55,12 @@ async def create_user(
     service: UserService = Depends(get_user_service),
 ) -> UserResponse:
     user = await service.create_user(
-        str(payload.email), payload.password, payload.role_name, current_user.id
+        payload.display_name,
+        str(payload.email),
+        payload.password,
+        payload.role_name,
+        payload.is_active,
+        current_user.id,
     )
     return UserResponse.model_validate(user)
 
@@ -89,4 +94,4 @@ async def reset_user_password(
     current_user: User = SuperAdmin,
     service: UserService = Depends(get_user_service),
 ) -> None:
-    await service.reset_password(user_id, payload.new_password, current_user.id)
+    await service.reset_password(user_id, payload.new_password, current_user.id, payload.reason)
