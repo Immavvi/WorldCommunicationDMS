@@ -80,6 +80,8 @@ class ChallanLineResponse(BaseModel):
     description_snapshot: str
     hsn_snapshot: str | None
     unit_snapshot: str
+    oem_snapshot: str | None
+    model_snapshot: str | None
     dispatched_quantity: Decimal
     remarks: str | None
     allocations: list[AllocationResponse]
@@ -111,6 +113,12 @@ class ChallanResponse(BaseModel):
     delivery_address_snapshot: dict
     dispatch_from_snapshot: dict
     organization_snapshot: dict
+    project_name_snapshot: str | None
+    project_work_reference_snapshot: str | None
+    loa_number_snapshot: str | None
+    loa_date_snapshot: date | None
+    railway_zone_snapshot: str | None
+    railway_division_snapshot: str | None
     acknowledged_date: date | None
     receiving_authority_text: str | None
     acknowledgement_reference: str | None

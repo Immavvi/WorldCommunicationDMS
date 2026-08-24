@@ -27,6 +27,7 @@ from app.repositories.procurement_repository import ProcurementRepository
 from app.repositories.quotation_repository import QuotationRepository
 from app.services.billing_service import ADDRESS_FIELDS, money, snapshot
 from app.services.invoicing_service import gst_snapshot
+from app.services.snapshot_service import contract_snapshot_values
 
 
 class QuotationService:
@@ -126,6 +127,11 @@ class QuotationService:
             }
             if terms
             else None,
+            **{
+                key: value
+                for key, value in contract_snapshot_values(project, loa, zone, division).items()
+                if not key.startswith("railway_")
+            },
             **payload.model_dump(
                 exclude={"lines", "tax_mode", "place_of_supply_state", "place_of_supply_state_code"}
             ),

@@ -169,6 +169,10 @@ class QuotationResponse(BaseModel):
     place_of_supply_snapshot: dict
     payment_terms_snapshot: dict | None
     terms_snapshot: dict | None
+    project_name_snapshot: str | None
+    project_work_reference_snapshot: str | None
+    loa_number_snapshot: str | None
+    loa_date_snapshot: date | None
     created_by_user_id: UUID
     approved_by_user_id: UUID | None
     approved_at: datetime | None

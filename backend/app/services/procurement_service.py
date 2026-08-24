@@ -4,7 +4,15 @@ from uuid import UUID
 
 from app.core.errors import AppError
 from app.models.contracts import LoaItem
-from app.models.master_data import Loa, Project
+from app.models.master_data import (
+    Loa,
+    OemProfile,
+    Party,
+    ProductModel,
+    Project,
+    RailwayDivision,
+    RailwayZone,
+)
 from app.models.procurement import (
     ProcurementRequirement,
     ProcurementRequirementLine,
@@ -20,6 +28,7 @@ from app.schemas.procurement import (
     RequirementUpdate,
 )
 from app.services.contract_service import ContractService
+from app.services.snapshot_service import contract_snapshot_values, gst_snapshot_values
 
 MONEY = Decimal("0.01")
 COMMITTED_PO_STATUSES = frozenset({"APPROVED", "ISSUED", "PARTIALLY_FULFILLED", "FULFILLED"})
@@ -68,7 +77,7 @@ class ProcurementService:
 
     async def create_po(self, payload: PurchaseOrderCreate, actor_id: UUID):
         project = await self._get(Project, payload.project_id, "project")
-        await self._validate_loa(payload.loa_id, project.id)
+        loa = await self._validate_loa(payload.loa_id, project.id)
         vendor = await self._get(MASTER_MODELS["party"], payload.vendor_party_id, "vendor")
         if not vendor.is_active or not any(role.role == "VENDOR" for role in vendor.roles):
             raise AppError(422, "invalid_vendor", "The selected party is not an active vendor.")
@@ -93,6 +102,36 @@ class ProcurementService:
         shipping = await self._shipping_address(payload, organization.id)
         payment_term = await self._optional("payment_term", payload.payment_term_id)
         terms = await self._optional("terms_version", payload.terms_version_id)
+        zone = (
+            await self._get(RailwayZone, project.railway_zone_id, "railway_zone")
+            if project.railway_zone_id
+            else None
+        )
+        division_id = (
+            loa.railway_division_id
+            if loa and loa.railway_division_id
+            else project.railway_division_id
+        )
+        division = (
+            await self._get(RailwayDivision, division_id, "railway_division")
+            if division_id
+            else None
+        )
+        requirement_record = (
+            await self.repository.get_requirement(payload.procurement_requirement_id)
+            if payload.procurement_requirement_id
+            else None
+        )
+        vendor_gst = await self.repository.party_gst(vendor.id, payload.po_date)
+        organization_gst = await self.repository.organization_gst(organization.id, payload.po_date)
+        vendor_address = next(
+            (
+                address
+                for address in vendor.addresses
+                if address.is_active and address.address_type == "REGISTERED"
+            ),
+            next((address for address in vendor.addresses if address.is_active), None),
+        )
         if terms and terms.terms_set.context not in {"PURCHASE", "GENERAL"}:
             raise AppError(422, "invalid_terms_context", "Select PURCHASE or GENERAL terms.")
         po = PurchaseOrder(
@@ -104,6 +143,7 @@ class ProcurementService:
             organization_snapshot=snapshot(
                 organization, ("code", "legal_name", "trade_name", "pan", "email", "phone")
             ),
+            organization_gst_snapshot=gst_snapshot_values(organization_gst),
             billing_address_snapshot=self._address_snapshot(billing),
             shipping_address_snapshot=self._address_snapshot(shipping),
             payment_terms_snapshot=snapshot(
@@ -114,6 +154,14 @@ class ProcurementService:
             terms_snapshot={"id": str(terms.id), "version": terms.version, "content": terms.content}
             if terms
             else None,
+            vendor_gstin_snapshot=vendor_gst.gstin if vendor_gst else None,
+            vendor_address_snapshot=self._address_snapshot(vendor_address)
+            if vendor_address
+            else None,
+            procurement_requirement_number_snapshot=(
+                requirement_record.requirement_number if requirement_record else None
+            ),
+            **contract_snapshot_values(project, loa, zone, division),
             **payload.model_dump(exclude={"lines"}),
         )
         po.lines = [
@@ -295,6 +343,15 @@ class ProcurementService:
         await self._validate_contract_source(po.loa_id, item.loa_item_id, item.variation_line_id)
         unit = await self._get(MASTER_MODELS["unit"], item.unit_id, "unit")
         hsn = await self._optional("hsn", item.hsn_code_id)
+        product_model = (
+            await self._get(ProductModel, item.product_model_id, "product_model")
+            if item.product_model_id
+            else None
+        )
+        oem = None
+        if product_model:
+            profile = await self._get(OemProfile, product_model.oem_profile_id, "oem_profile")
+            oem = await self._get(Party, profile.party_id, "oem")
         if po.tax_mode == "INTRA_STATE" and item.igst_percent != 0:
             raise AppError(
                 422, "invalid_tax_components", "Intra-state PO lines cannot contain IGST."
@@ -313,6 +370,14 @@ class ProcurementService:
             line_number=number,
             hsn_code=hsn.code if hsn else None,
             unit_snapshot=f"{unit.code} - {unit.symbol}",
+            model_snapshot=(
+                f"{product_model.model_number} - {product_model.name}"
+                if product_model and product_model.name
+                else product_model.model_number
+                if product_model
+                else None
+            ),
+            oem_snapshot=(oem.trade_name or oem.legal_name) if oem else None,
             subtotal=subtotal,
             discount_amount=discount,
             taxable_amount=taxable,
@@ -411,6 +476,8 @@ class ProcurementService:
             loa = await self._get(Loa, loa_id, "loa")
             if loa.project_id != project_id:
                 raise AppError(422, "invalid_loa", "LOA does not belong to the selected project.")
+            return loa
+        return None
 
     async def _shipping_address(self, payload, organization_id):
         if payload.ship_to_organization_address_id:

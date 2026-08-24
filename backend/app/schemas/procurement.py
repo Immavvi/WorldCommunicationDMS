@@ -136,6 +136,8 @@ class PoLineResponse(BaseModel):
     hsn_code: str | None
     unit_id: UUID
     unit_snapshot: str
+    oem_snapshot: str | None
+    model_snapshot: str | None
     ordered_quantity: Decimal
     unit_rate: Decimal
     discount_percent: Decimal
@@ -185,10 +187,20 @@ class PurchaseOrderResponse(BaseModel):
     grand_total: Decimal
     vendor_snapshot: dict
     organization_snapshot: dict
+    organization_gst_snapshot: dict | None
     billing_address_snapshot: dict
     shipping_address_snapshot: dict
     payment_terms_snapshot: dict | None
     terms_snapshot: dict | None
+    project_name_snapshot: str | None
+    project_work_reference_snapshot: str | None
+    loa_number_snapshot: str | None
+    loa_date_snapshot: date | None
+    railway_zone_snapshot: str | None
+    railway_division_snapshot: str | None
+    procurement_requirement_number_snapshot: str | None
+    vendor_gstin_snapshot: str | None
+    vendor_address_snapshot: dict | None
     created_by_user_id: UUID
     approved_by_user_id: UUID | None
     approved_at: datetime | None

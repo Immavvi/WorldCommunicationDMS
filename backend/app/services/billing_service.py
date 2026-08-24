@@ -19,12 +19,14 @@ from app.models.master_data import (
     RailwayAuthority,
     RailwayAuthorityAddress,
     RailwayDivision,
+    RailwayZone,
     TermsConditionVersion,
     UnitOfMeasure,
 )
 from app.repositories.billing_repository import BillingRepository
 from app.repositories.procurement_repository import ProcurementRepository
 from app.schemas.billing import BillablePosition, PiCreate
+from app.services.snapshot_service import contract_snapshot_values, gst_snapshot_values
 
 MONEY = Decimal("0.01")
 
@@ -96,11 +98,16 @@ class BillingService:
         customer = await self._get(Party, payload.customer_party_id, "customer")
         if not any(role.role == "CUSTOMER" for role in customer.roles):
             raise AppError(422, "invalid_customer", "Selected party is not a customer.")
+        loa = None
         if payload.loa_id:
             loa = await self._get(Loa, payload.loa_id, "loa")
             if loa.project_id != project.id:
                 raise AppError(422, "invalid_loa", "LOA does not belong to the project.")
         organization = await self._get(Organization, payload.organization_id, "organization")
+        organization_gst = await self.repository.effective_gst(
+            payload.pi_date, organization_id=organization.id
+        )
+        customer_gst = await self.repository.effective_gst(payload.pi_date, party_id=customer.id)
         bank = await self._get(BankAccount, payload.bank_account_id, "bank_account")
         if bank.organization_id != organization.id or not bank.is_active:
             raise AppError(
@@ -109,6 +116,11 @@ class BillingService:
                 "Bank account must be active and belong to the organization.",
             )
         division, authority, bill_to, ship_to = await self._addresses(payload)
+        zone = await self._optional(RailwayZone, project.railway_zone_id)
+        contract_division = division or await self._optional(
+            RailwayDivision,
+            loa.railway_division_id if loa else project.railway_division_id,
+        )
         payment = await self._optional(PaymentTerm, payload.payment_term_id)
         terms = await self._optional(TermsConditionVersion, payload.terms_version_id)
         if terms and terms.terms_set.context not in {
@@ -124,9 +136,11 @@ class BillingService:
             organization_snapshot=snapshot(
                 organization, ("code", "legal_name", "trade_name", "pan", "email", "phone")
             ),
+            organization_gst_snapshot=gst_snapshot_values(organization_gst),
             customer_snapshot=snapshot(
                 customer, ("code", "legal_name", "trade_name", "pan", "email", "phone")
             ),
+            customer_gst_snapshot=gst_snapshot_values(customer_gst),
             division_snapshot=snapshot(division, ("code", "name")) if division else None,
             authority_snapshot=snapshot(
                 authority, ("code", "name", "designation", "email", "phone")
@@ -158,6 +172,7 @@ class BillingService:
             }
             if terms
             else None,
+            **contract_snapshot_values(project, loa, zone, contract_division),
             **payload.model_dump(exclude={"lines"}),
         )
         pi.lines = [await self._line(pi, n, item) for n, item in enumerate(payload.lines, 1)]
@@ -280,6 +295,10 @@ class BillingService:
                 challan_line.hsn_snapshot,
                 challan_line.unit_snapshot,
             )
+            oem = challan_line.oem_snapshot
+            model = challan_line.model_snapshot
+            challan_number = challan.challan_number
+            challan_date = challan.challan_date
         else:
             if not item.description or not item.unit_id:
                 raise AppError(
@@ -291,6 +310,7 @@ class BillingService:
                 item.hsn_code,
                 f"{unit_record.code} - {unit_record.symbol}",
             )
+            oem = model = challan_number = challan_date = None
         rate = await self._contract_rate(item.loa_item_id, item.variation_line_id)
         if rate is None:
             rate = item.sales_rate
@@ -308,6 +328,10 @@ class BillingService:
             description_snapshot=description,
             hsn_snapshot=hsn,
             unit_snapshot=unit,
+            oem_snapshot=oem,
+            model_snapshot=model,
+            challan_number_snapshot=challan_number,
+            challan_date_snapshot=challan_date,
             sales_rate=rate,
             subtotal=subtotal,
             discount_amount=discount,

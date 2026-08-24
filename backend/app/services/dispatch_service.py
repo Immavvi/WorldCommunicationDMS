@@ -14,11 +14,13 @@ from app.models.master_data import (
     RailwayAuthority,
     RailwayAuthorityAddress,
     RailwayDivision,
+    RailwayZone,
 )
 from app.repositories.dispatch_repository import DispatchRepository
 from app.repositories.procurement_repository import ProcurementRepository
 from app.schemas.dispatch import AcknowledgementCreate, ChallanCreate, DispatchAvailability
 from app.services.contract_service import ContractService
+from app.services.snapshot_service import contract_snapshot_values
 
 COUNTED_CHALLAN_STATUSES = frozenset({"DISPATCHED", "DELIVERED", "ACKNOWLEDGED"})
 
@@ -114,6 +116,7 @@ class DispatchService:
         customer = await self._get(Party, payload.customer_party_id, "customer")
         if not customer.is_active or not any(role.role == "CUSTOMER" for role in customer.roles):
             raise AppError(422, "invalid_customer", "Selected party is not an active customer.")
+        loa = None
         if payload.loa_id:
             loa = await self._get(Loa, payload.loa_id, "loa")
             if loa.project_id != project.id:
@@ -129,6 +132,17 @@ class DispatchService:
                     "Selected Railway authority does not have the BILL_TO role.",
                 )
         division, consignee, delivery = await self._destination(payload)
+        zone = (
+            await self._get(RailwayZone, project.railway_zone_id, "railway_zone")
+            if project.railway_zone_id
+            else None
+        )
+        division_id = loa.railway_division_id if loa else project.railway_division_id
+        contract_division = division or (
+            await self._get(RailwayDivision, division_id, "railway_division")
+            if division_id
+            else None
+        )
         dispatch_from = await self._get(
             OrganizationAddress, payload.dispatch_from_address_id, "dispatch_from"
         )
@@ -154,6 +168,7 @@ class DispatchService:
                 dispatch_from.organization,
                 ("code", "legal_name", "trade_name", "pan", "email", "phone"),
             ),
+            **contract_snapshot_values(project, loa, zone, contract_division),
             lines=lines,
             **payload.model_dump(exclude={"lines"}),
         )
@@ -352,6 +367,8 @@ class DispatchService:
             description_snapshot=first_receipt.description_snapshot,
             hsn_snapshot=first_po_line.hsn_code,
             unit_snapshot=first_receipt.unit_snapshot,
+            oem_snapshot=first_po_line.oem_snapshot,
+            model_snapshot=first_po_line.model_snapshot,
             dispatched_quantity=line_payload.dispatched_quantity,
             remarks=line_payload.remarks,
             allocations=[

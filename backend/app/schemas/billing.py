@@ -101,6 +101,10 @@ class PiLineResponse(BaseModel):
     description_snapshot: str
     hsn_snapshot: str | None
     unit_snapshot: str
+    oem_snapshot: str | None
+    model_snapshot: str | None
+    challan_number_snapshot: str | None
+    challan_date_snapshot: date | None
     billable_quantity: Decimal
     sales_rate: Decimal
     discount_percent: Decimal
@@ -142,7 +146,9 @@ class PiResponse(BaseModel):
     grand_total: Decimal
     amount_in_words: str
     organization_snapshot: dict
+    organization_gst_snapshot: dict | None
     customer_snapshot: dict
+    customer_gst_snapshot: dict | None
     division_snapshot: dict | None
     authority_snapshot: dict | None
     bill_to_snapshot: dict
@@ -150,6 +156,12 @@ class PiResponse(BaseModel):
     bank_snapshot: dict
     payment_terms_snapshot: dict | None
     terms_snapshot: dict | None
+    project_name_snapshot: str | None
+    project_work_reference_snapshot: str | None
+    loa_number_snapshot: str | None
+    loa_date_snapshot: date | None
+    railway_zone_snapshot: str | None
+    railway_division_snapshot: str | None
     created_by_user_id: UUID
     approved_by_user_id: UUID | None
     approved_at: datetime | None

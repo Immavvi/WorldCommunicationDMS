@@ -1,13 +1,14 @@
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.auth import AuditLog
 from app.models.billing import ProformaInvoice, ProformaInvoiceLine
 from app.models.dispatch import SupplyChallan, SupplyChallanLine
-from app.models.master_data import Party, RailwayAuthority, TermsConditionVersion
+from app.models.master_data import GstRegistration, Party, RailwayAuthority, TermsConditionVersion
 
 COMMITTED_PI_STATUSES = ("APPROVED", "ISSUED")
 
@@ -36,6 +37,23 @@ class BillingRepository:
             select(ProformaInvoice)
             .options(selectinload(ProformaInvoice.lines))
             .where(ProformaInvoice.id == pi_id)
+        )
+
+    async def effective_gst(self, on_date: date, *, party_id=None, organization_id=None):
+        return await self.session.scalar(
+            select(GstRegistration)
+            .where(
+                GstRegistration.party_id == party_id
+                if party_id
+                else GstRegistration.organization_id == organization_id,
+                GstRegistration.is_active.is_(True),
+                GstRegistration.effective_from <= on_date,
+                or_(
+                    GstRegistration.effective_to.is_(None),
+                    GstRegistration.effective_to >= on_date,
+                ),
+            )
+            .order_by(GstRegistration.is_default.desc(), GstRegistration.effective_from.desc())
         )
 
     async def list_pis(self):

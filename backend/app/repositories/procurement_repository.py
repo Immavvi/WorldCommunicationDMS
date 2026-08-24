@@ -1,12 +1,14 @@
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.auth import AuditLog
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
 from app.models.master_data import (
+    GstRegistration,
     HsnCode,
     Organization,
     OrganizationAddress,
@@ -85,6 +87,36 @@ class ProcurementRepository:
         if model is TermsConditionVersion:
             statement = statement.options(selectinload(TermsConditionVersion.terms_set))
         return await self.session.scalar(statement)
+
+    async def party_gst(self, party_id: UUID, on_date: date):
+        return await self.session.scalar(
+            select(GstRegistration)
+            .where(
+                GstRegistration.party_id == party_id,
+                GstRegistration.is_active.is_(True),
+                GstRegistration.effective_from <= on_date,
+                or_(
+                    GstRegistration.effective_to.is_(None),
+                    GstRegistration.effective_to >= on_date,
+                ),
+            )
+            .order_by(GstRegistration.is_default.desc(), GstRegistration.effective_from.desc())
+        )
+
+    async def organization_gst(self, organization_id: UUID, on_date: date):
+        return await self.session.scalar(
+            select(GstRegistration)
+            .where(
+                GstRegistration.organization_id == organization_id,
+                GstRegistration.is_active.is_(True),
+                GstRegistration.effective_from <= on_date,
+                or_(
+                    GstRegistration.effective_to.is_(None),
+                    GstRegistration.effective_to >= on_date,
+                ),
+            )
+            .order_by(GstRegistration.is_default.desc(), GstRegistration.effective_from.desc())
+        )
 
     async def get_variation_line(self, line_id: UUID):
         return await self.session.scalar(

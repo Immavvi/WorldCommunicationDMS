@@ -94,9 +94,8 @@ def quotation(record):
         "QUOTATION",
         f"{record.quotation_number}-R{record.revision_number}",
         record.status,
-        record.organization_snapshot | {
-            "gstin": (record.organization_gst_snapshot or {}).get("gstin")
-        },
+        record.organization_snapshot
+        | {"gstin": (getattr(record, "organization_gst_snapshot", None) or {}).get("gstin")},
         _clean_identity(
             [
                 ("WORLD COMMUNICATION DOCUMENT NUMBER", record.quotation_number),
@@ -111,14 +110,20 @@ def quotation(record):
             ]
         ),
         [
-            ("CUSTOMER DETAILS", _party(record.customer_snapshot, record.customer_gst_snapshot)),
+            (
+                "CUSTOMER DETAILS",
+                _party(record.customer_snapshot, getattr(record, "customer_gst_snapshot", None)),
+            ),
             ("BILL TO", _address(record.bill_to_snapshot)),
             ("SHIP TO", _address(record.ship_to_snapshot)),
             ("RAILWAY AUTHORITY", _party(record.authority_snapshot)),
         ]
         if record.business_scope == "RAILWAY"
         else [
-            ("CUSTOMER DETAILS", _party(record.customer_snapshot, record.customer_gst_snapshot)),
+            (
+                "CUSTOMER DETAILS",
+                _party(record.customer_snapshot, getattr(record, "customer_gst_snapshot", None)),
+            ),
             ("BILL TO", _address(record.bill_to_snapshot)),
             ("SHIP TO", _address(record.ship_to_snapshot)),
         ],
@@ -130,8 +135,7 @@ def quotation(record):
         terms=(record.terms_snapshot or {}).get("content"),
         notes=record.notes,
         special_instructions=record.special_instructions,
-        continuation_reference=_loa_reference(record)
-        or f"REVISION {record.revision_number}",
+        continuation_reference=_loa_reference(record) or f"REVISION {record.revision_number}",
     )
 
 
@@ -142,31 +146,45 @@ def purchase_order(record):
         "PURCHASE ORDER",
         record.po_number,
         record.status,
-        record.organization_snapshot,
+        record.organization_snapshot
+        | {"gstin": (getattr(record, "organization_gst_snapshot", None) or {}).get("gstin")},
         _clean_identity(
             [
                 ("WORLD COMMUNICATION DOCUMENT NUMBER", record.po_number),
                 ("DATE", str(record.po_date)),
                 ("PROCUREMENT TYPE / INTENDED USE", getattr(record, "procurement_type", None)),
                 ("PROJECT NAME / LOA NUMBER", _project_loa(record)),
-                ("LOA DATE", _snapshot_value(record, "loa_snapshot", "loa_date")),
-                ("RAILWAY ZONE", _reference(getattr(record, "zone_snapshot", None))),
-                ("RAILWAY DIVISION", _reference(getattr(record, "division_snapshot", None))),
+                ("LOA DATE", getattr(record, "loa_date_snapshot", None)),
+                ("RAILWAY ZONE", getattr(record, "railway_zone_snapshot", None)),
+                ("RAILWAY DIVISION", getattr(record, "railway_division_snapshot", None)),
                 ("CONTRACT / TENDER REFERENCE", getattr(record, "contract_reference", None)),
                 (
                     "PROCUREMENT REQUIREMENT REFERENCE",
-                    str(record.procurement_requirement_id)
-                    if record.procurement_requirement_id
-                    else None,
+                    getattr(record, "procurement_requirement_number_snapshot", None),
                 ),
                 ("DELIVERY DATE", str(record.delivery_date) if record.delivery_date else None),
             ]
         ),
         [
-            ("VENDOR / SUPPLIER", _vendor(record.vendor_snapshot)),
+            (
+                "VENDOR / SUPPLIER",
+                _vendor(
+                    record.vendor_snapshot,
+                    getattr(record, "vendor_address_snapshot", None),
+                    getattr(record, "vendor_gstin_snapshot", None),
+                ),
+            ),
             (
                 "BUYER / BILL TO",
-                _buyer(record.organization_snapshot, record.billing_address_snapshot),
+                _buyer(
+                    record.organization_snapshot
+                    | {
+                        "gstin": (getattr(record, "organization_gst_snapshot", None) or {}).get(
+                            "gstin"
+                        )
+                    },
+                    record.billing_address_snapshot,
+                ),
             ),
             ("SHIP TO", _address(record.shipping_address_snapshot)),
         ],
@@ -176,8 +194,7 @@ def purchase_order(record):
         payment_terms=record.payment_terms_snapshot,
         terms=record.terms_override_text or (record.terms_snapshot or {}).get("content"),
         special_instructions=record.special_instructions,
-        continuation_reference=_loa_reference(record)
-        or getattr(record, "procurement_type", None),
+        continuation_reference=_loa_reference(record) or getattr(record, "procurement_type", None),
     )
 
 
@@ -187,29 +204,36 @@ def proforma_invoice(record):
         "PROFORMA INVOICE",
         record.pi_number,
         record.status,
-        record.organization_snapshot,
+        record.organization_snapshot
+        | {"gstin": (getattr(record, "organization_gst_snapshot", None) or {}).get("gstin")},
         _clean_identity(
             [
                 ("WORLD COMMUNICATION DOCUMENT NUMBER", record.pi_number),
                 ("DATE", str(record.pi_date)),
                 ("PROJECT NAME / LOA NUMBER", _project_loa(record)),
-                ("LOA DATE", _snapshot_value(record, "loa_snapshot", "loa_date")),
+                ("LOA DATE", getattr(record, "loa_date_snapshot", None)),
                 ("RAILWAY DIVISION", _reference(record.division_snapshot)),
                 (
                     "CHALLAN / DISPATCH REFERENCES",
-                    _line_references(record.lines, "supply_challan_line_id"),
+                    _line_references(record.lines, "challan_number_snapshot"),
                 ),
             ]
         ),
         [
-            ("CUSTOMER DETAILS", _party(record.customer_snapshot)),
+            (
+                "CUSTOMER DETAILS",
+                _party(record.customer_snapshot, getattr(record, "customer_gst_snapshot", None)),
+            ),
             ("BILL TO", _address(record.bill_to_snapshot)),
             ("SHIP TO", _address(record.ship_to_snapshot)),
             ("CONSIGNEE / RAILWAY AUTHORITY", _party(record.authority_snapshot)),
         ]
         if record.business_scope == "RAILWAY"
         else [
-            ("CUSTOMER DETAILS", _party(record.customer_snapshot)),
+            (
+                "CUSTOMER DETAILS",
+                _party(record.customer_snapshot, getattr(record, "customer_gst_snapshot", None)),
+            ),
             ("BILL TO", _address(record.bill_to_snapshot)),
             ("SHIP TO", _address(record.ship_to_snapshot)),
         ],
@@ -235,19 +259,20 @@ def tax_invoice(record):
         record.organization_snapshot | {"gstin": record.organization_gst_snapshot.get("gstin")},
         _clean_identity(
             [
-            ("WORLD COMMUNICATION DOCUMENT NUMBER", record.invoice_number),
-            ("DATE", str(record.invoice_date)),
-            ("DUE DATE", str(record.due_date) if record.due_date else None),
-            ("PROJECT NAME / LOA NUMBER", _project_loa(record)),
-            ("LOA DATE", _snapshot_value(record, "loa_snapshot", "loa_date")),
-            (
-                "Place of Supply",
-                f"{record.place_of_supply_state} ({record.place_of_supply_state_code})",
-            ),
-            ("RAILWAY DIVISION / AUTHORITY", _reference(record.division_snapshot)),
-            ("PI REFERENCE", _line_references(record.lines, "proforma_invoice_line_id")),
-            ("CHALLAN REFERENCE", _line_references(record.lines, "supply_challan_line_id")),
-        ]),
+                ("WORLD COMMUNICATION DOCUMENT NUMBER", record.invoice_number),
+                ("DATE", str(record.invoice_date)),
+                ("DUE DATE", str(record.due_date) if record.due_date else None),
+                ("PROJECT NAME / LOA NUMBER", _project_loa(record)),
+                ("LOA DATE", getattr(record, "loa_date_snapshot", None)),
+                (
+                    "Place of Supply",
+                    f"{record.place_of_supply_state} ({record.place_of_supply_state_code})",
+                ),
+                ("RAILWAY DIVISION / AUTHORITY", _reference(record.division_snapshot)),
+                ("PI REFERENCE", _line_references(record.lines, "pi_number_snapshot")),
+                ("CHALLAN REFERENCE", _line_references(record.lines, "challan_number_snapshot")),
+            ]
+        ),
         [
             ("CUSTOMER DETAILS", _party(record.customer_snapshot, record.customer_gst_snapshot)),
             ("BILL TO", _address(record.bill_to_snapshot)),
@@ -278,20 +303,22 @@ def challan(record):
         )
         for line in record.lines
     ]
-    identities = _clean_identity([
-        ("WORLD COMMUNICATION DOCUMENT NUMBER", record.challan_number),
-        ("DATE", str(record.challan_date)),
-        ("PROJECT NAME / LOA NUMBER", _project_loa(record)),
-        ("LOA DATE", _snapshot_value(record, "loa_snapshot", "loa_date")),
-        ("RAILWAY DIVISION", _reference(record.division_snapshot)),
-        (
-            "TRANSPORTER / VEHICLE",
-            " / ".join(v for v in (record.transporter, record.vehicle_number) if v),
-        ),
-        ("LR / RR", record.transport_reference),
-        ("E-WAY BILL", record.eway_bill_reference),
-        ("DELIVERY REFERENCE", record.acknowledgement_reference),
-    ])
+    identities = _clean_identity(
+        [
+            ("WORLD COMMUNICATION DOCUMENT NUMBER", record.challan_number),
+            ("DATE", str(record.challan_date)),
+            ("PROJECT NAME / LOA NUMBER", _project_loa(record)),
+            ("LOA DATE", getattr(record, "loa_date_snapshot", None)),
+            ("RAILWAY DIVISION", _reference(record.division_snapshot)),
+            (
+                "TRANSPORTER / VEHICLE",
+                " / ".join(v for v in (record.transporter, record.vehicle_number) if v),
+            ),
+            ("LR / RR", record.transport_reference),
+            ("E-WAY BILL", record.eway_bill_reference),
+            ("DELIVERY REFERENCE", record.acknowledgement_reference),
+        ]
+    )
     parties = [
         ("CUSTOMER DETAILS", _party(record.customer_snapshot)),
         ("CONSIGNEE", _party(record.consignee_snapshot)),
@@ -329,13 +356,16 @@ def _party(value, gst=None):
     return party_text(merged)
 
 
-def _vendor(value):
+def _vendor(value, address=None, gstin=None):
     merged = dict(value or {})
     lines = [_party(merged)]
     if merged.get("trade_name") and merged.get("trade_name") != merged.get("legal_name"):
         lines.append(f"Trade Name: {merged['trade_name']}")
-    lines.append(f"Address: {merged.get('address') or 'Not recorded in PO snapshot'}")
-    lines.append(f"GSTIN: {merged.get('gstin') or 'Not recorded in PO snapshot'}")
+    address_text = _address(address) if address else merged.get("address")
+    if address_text:
+        lines.append(f"Address: {address_text}")
+    if gstin or merged.get("gstin"):
+        lines.append(f"GSTIN: {gstin or merged.get('gstin')}")
     if merged.get("pan"):
         lines.append(f"PAN: {merged['pan']}")
     if merged.get("contact_name"):
@@ -357,6 +387,8 @@ def _buyer(organization, address):
 def _reference(value):
     if not value:
         return "-"
+    if not isinstance(value, dict):
+        return str(value)
     return str(value.get("name") or value.get("code") or value.get("division_code") or "-")
 
 
@@ -381,8 +413,14 @@ def _snapshot_value(record, snapshot_name, key):
 def _project_loa(record):
     project = getattr(record, "project_snapshot", None) or {}
     loa = getattr(record, "loa_snapshot", None) or {}
-    project_name = project.get("name") or project.get("project_name")
-    loa_number = loa.get("loa_number") or loa.get("number")
+    project_name = (
+        getattr(record, "project_name_snapshot", None)
+        or project.get("name")
+        or project.get("project_name")
+    )
+    loa_number = (
+        getattr(record, "loa_number_snapshot", None) or loa.get("loa_number") or loa.get("number")
+    )
     if not project_name and not loa_number:
         return None
     return " / ".join(value for value in (project_name, loa_number) if value)
@@ -390,5 +428,7 @@ def _project_loa(record):
 
 def _loa_reference(record):
     loa = getattr(record, "loa_snapshot", None) or {}
-    number = loa.get("loa_number") or loa.get("number")
+    number = (
+        getattr(record, "loa_number_snapshot", None) or loa.get("loa_number") or loa.get("number")
+    )
     return f"LOA: {number}" if number else None

@@ -1,8 +1,11 @@
+from uuid import UUID
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.models.auth import AuditLog
+from app.models.master_data import Loa
 
 
 async def login(client: AsyncClient, email: str, password: str) -> str:
@@ -33,6 +36,28 @@ async def foundation(client: AsyncClient, token: str):
         token,
         "parties",
         {"code": "VENDOR-1", "legal_name": "Original Vendor", "roles": ["VENDOR"]},
+    )
+    oem = await master(
+        client,
+        token,
+        "parties",
+        {"code": "OEM-P5", "legal_name": "Original OEM", "roles": ["OEM"]},
+    )
+    oem_profile = await master(
+        client,
+        token,
+        "oem-profiles",
+        {"party_id": oem["id"], "manufacturer_code": "OEM-P5"},
+    )
+    product_model = await master(
+        client,
+        token,
+        "product-models",
+        {
+            "oem_profile_id": oem_profile["id"],
+            "model_number": "MODEL-OLD",
+            "name": "Original Model",
+        },
     )
     unit = await master(
         client, token, "units", {"code": "NOS-P5", "name": "Numbers P5", "symbol": "Nos"}
@@ -105,6 +130,8 @@ async def foundation(client: AsyncClient, token: str):
     return {
         "customer": customer,
         "vendor": vendor,
+        "oem": oem,
+        "product_model": product_model,
         "unit": unit,
         "organization": organization,
         "billing": billing,
@@ -128,6 +155,7 @@ def po_payload(data, quantity="40", tax_mode="INTRA_STATE"):
         "lines": [
             {
                 "description": "Purchased snapshot",
+                "product_model_id": data["product_model"]["id"],
                 "unit_id": data["unit"]["id"],
                 "ordered_quantity": quantity,
                 "unit_rate": "33.33",
@@ -176,6 +204,14 @@ async def test_requirement_po_totals_numbering_snapshots_and_workflow(client: As
     assert po["cgst_amount"] == "107.99" and po["sgst_amount"] == "107.99"
     assert po["grand_total"] == "1415.86"
     assert po["shipping_address_snapshot"]["address_line_1"] == "Old warehouse"
+    assert po["vendor_snapshot"]["legal_name"] == "Original Vendor"
+    assert po["project_name_snapshot"] == "Procurement Project"
+    assert po["loa_number_snapshot"] == "LOA/P5"
+    assert po["loa_date_snapshot"] == "2026-08-24"
+    assert po["project_id"] == data["project"]["id"]
+    assert po["loa_id"] == data["loa"]["id"]
+    assert po["lines"][0]["oem_snapshot"] == "Original OEM"
+    assert po["lines"][0]["model_snapshot"] == "MODEL-OLD - Original Model"
 
     edited_line = po_payload(data)["lines"][0]
     edited_line["unit_rate"] = "33.34"
@@ -226,10 +262,59 @@ async def test_requirement_po_totals_numbering_snapshots_and_workflow(client: As
         headers=auth(admin),
     )
     assert changed.status_code == 200
+    assert (
+        await client.patch(
+            f"/api/v1/master-data/parties/{data['vendor']['id']}",
+            json={"legal_name": "Renamed Vendor"},
+            headers=auth(admin),
+        )
+    ).status_code == 200
+    assert (
+        await client.patch(
+            f"/api/v1/master-data/parties/{data['oem']['id']}",
+            json={"legal_name": "Renamed OEM"},
+            headers=auth(admin),
+        )
+    ).status_code == 200
+    assert (
+        await client.patch(
+            f"/api/v1/master-data/product-models/{data['product_model']['id']}",
+            json={"model_number": "MODEL-NEW", "name": "Renamed Model"},
+            headers=auth(admin),
+        )
+    ).status_code == 200
+    assert (
+        await client.patch(
+            f"/api/v1/projects/{data['project']['id']}",
+            json={"name": "Renamed Project"},
+            headers=auth(admin),
+        )
+    ).status_code == 200
+    async with client._session_factory() as session:  # type: ignore[attr-defined]
+        current_loa = await session.get(Loa, UUID(data["loa"]["id"]))
+        current_loa.loa_number = "LOA/CHANGED"
+        await session.commit()
     unchanged = (
         await client.get(f"/api/v1/purchase-orders/{po['id']}", headers=auth(admin))
     ).json()
     assert unchanged["shipping_address_snapshot"]["address_line_1"] == "Old warehouse"
+    assert unchanged["vendor_snapshot"]["legal_name"] == "Original Vendor"
+    assert unchanged["project_name_snapshot"] == "Procurement Project"
+    assert unchanged["loa_number_snapshot"] == "LOA/P5"
+    assert unchanged["lines"][0]["oem_snapshot"] == "Original OEM"
+    assert unchanged["lines"][0]["model_snapshot"] == "MODEL-OLD - Original Model"
+
+    current = await client.post(
+        "/api/v1/purchase-orders",
+        json=po_payload(data, "1"),
+        headers=auth(admin),
+    )
+    assert current.status_code == 201, current.text
+    assert current.json()["vendor_snapshot"]["legal_name"] == "Renamed Vendor"
+    assert current.json()["project_name_snapshot"] == "Renamed Project"
+    assert current.json()["loa_number_snapshot"] == "LOA/CHANGED"
+    assert current.json()["lines"][0]["oem_snapshot"] == "Renamed OEM"
+    assert current.json()["lines"][0]["model_snapshot"] == "MODEL-NEW - Renamed Model"
 
     async with client._session_factory() as session:  # type: ignore[attr-defined]
         actions = list(

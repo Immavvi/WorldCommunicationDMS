@@ -6,6 +6,7 @@ from uuid import UUID
 from app.core.errors import AppError
 from app.core.number_words import inr_amount_in_words
 from app.models.billing import ProformaInvoice, ProformaInvoiceLine
+from app.models.dispatch import SupplyChallan
 from app.models.invoicing import TaxInvoice, TaxInvoiceLine
 from app.models.master_data import (
     BankAccount,
@@ -19,12 +20,14 @@ from app.models.master_data import (
     RailwayAuthority,
     RailwayAuthorityAddress,
     RailwayDivision,
+    RailwayZone,
     TermsConditionVersion,
 )
 from app.repositories.invoicing_repository import InvoicingRepository
 from app.repositories.procurement_repository import ProcurementRepository
 from app.schemas.invoicing import InvoiceablePosition, InvoiceCreate
 from app.services.billing_service import ADDRESS_FIELDS, money, snapshot
+from app.services.snapshot_service import contract_snapshot_values
 
 
 def gst_snapshot(record):
@@ -80,6 +83,7 @@ class InvoicingService:
         customer = await self._get(Party, payload.customer_party_id, "customer")
         if not any(role.role == "CUSTOMER" for role in customer.roles):
             raise AppError(422, "invalid_customer", "Selected party is not a customer.")
+        loa = None
         if payload.loa_id:
             loa = await self._get(Loa, payload.loa_id, "loa")
             if loa.project_id != project.id:
@@ -105,6 +109,11 @@ class InvoicingService:
                 "Bank account must be active and belong to the organization.",
             )
         division, authority, bill_to, ship_to = await self._addresses(payload)
+        zone = await self._optional(RailwayZone, project.railway_zone_id)
+        contract_division = division or await self._optional(
+            RailwayDivision,
+            loa.railway_division_id if loa else project.railway_division_id,
+        )
         state = payload.place_of_supply_state or ship_to.state
         state_code = payload.place_of_supply_state_code or ship_to.state_code
         if not state or not state_code:
@@ -178,6 +187,7 @@ class InvoicingService:
             }
             if terms
             else None,
+            **contract_snapshot_values(project, loa, zone, contract_division),
             **payload.model_dump(
                 exclude={"lines", "tax_mode", "place_of_supply_state", "place_of_supply_state_code"}
             ),
@@ -271,6 +281,14 @@ class InvoicingService:
     async def _line(self, invoice, number, item):
         pi_line = await self._get(ProformaInvoiceLine, item.proforma_invoice_line_id, "pi_line")
         pi = await self._get(ProformaInvoice, pi_line.proforma_invoice_id, "pi")
+        challan = None
+        if pi_line.supply_challan_line_id:
+            from app.models.dispatch import SupplyChallanLine
+
+            challan_line = await self._get(
+                SupplyChallanLine, pi_line.supply_challan_line_id, "challan_line"
+            )
+            challan = await self._get(SupplyChallan, challan_line.supply_challan_id, "challan")
         if (
             pi.status not in {"APPROVED", "ISSUED"}
             or pi.project_id != invoice.project_id
@@ -310,6 +328,12 @@ class InvoicingService:
             description_snapshot=pi_line.description_snapshot,
             hsn_snapshot=pi_line.hsn_snapshot,
             unit_snapshot=pi_line.unit_snapshot,
+            oem_snapshot=pi_line.oem_snapshot,
+            model_snapshot=pi_line.model_snapshot,
+            pi_number_snapshot=pi.pi_number,
+            pi_date_snapshot=pi.pi_date,
+            challan_number_snapshot=challan.challan_number if challan else None,
+            challan_date_snapshot=challan.challan_date if challan else None,
             invoiced_quantity=item.invoiced_quantity,
             sales_rate=pi_line.sales_rate,
             discount_percent=pi_line.discount_percent,
