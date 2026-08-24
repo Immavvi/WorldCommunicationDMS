@@ -24,6 +24,7 @@ import { ChallanDetailPage } from "./pages/ChallanDetailPage";
 import { QuotationsPage } from "./pages/QuotationsPage";
 import { QuotationDetailPage } from "./pages/QuotationDetailPage";
 import { AssetsPage } from "./pages/AssetsPage";
+import { AlertsPage } from "./pages/AlertsPage";
 import { PaymentsPage } from "./pages/PaymentsPage";
 import { ReceivablesPage } from "./pages/ReceivablesPage";
 
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="/procurement-requirements/:requirementId" element={<RequirementDetailPage />} />
               <Route path="/receiving" element={<ReceivingPage />} />
               <Route path="/assets" element={<AssetsPage />} />
+              <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/payments" element={<PaymentsPage />} />
               <Route path="/receivables" element={<ReceivablesPage />} />
               <Route path="/material-receipts/:receiptId" element={<ReceiptDetailPage />} />

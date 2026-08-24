@@ -1,4 +1,5 @@
 from app.models.assets import Asset, AssetLifecycleEvent, ChallanAssetAssignment
+from app.models.attention import Alert, AlertRule, Notification
 from app.models.auth import AuditLog, Permission, Role, User
 from app.models.billing import ProformaInvoice, ProformaInvoiceLine
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
@@ -47,6 +48,8 @@ __all__ = [
     "AuditLog",
     "Asset",
     "AssetLifecycleEvent",
+    "Alert",
+    "AlertRule",
     "ChallanReceiptAllocation",
     "ChallanAssetAssignment",
     "CustomerPayment",
@@ -62,6 +65,7 @@ __all__ = [
     "SupplyChallan",
     "SupplyChallanLine",
     "NumberingSeries",
+    "Notification",
     "OemProfile",
     "Organization",
     "OrganizationAddress",

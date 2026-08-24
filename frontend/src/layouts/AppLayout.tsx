@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import { DocumentExports } from "../components/DocumentExports";
+import { NotificationBell } from "../components/NotificationBell";
 
 const exportRoutes = [
   [/^\/quotations\/([^/]+)$/, "quotation"],
@@ -30,6 +31,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link to="/procurement">Procurement & POs</Link>
               <Link to="/receiving">GRN / Receipts</Link>
               <Link to="/assets">Assets</Link>
+              <Link to="/alerts">Alerts</Link>
               <Link to="/dispatch">Challans / Dispatch</Link>
               <Link to="/proforma-invoices">Proforma Invoices</Link>
               <Link to="/tax-invoices">Tax Invoices</Link>
@@ -38,6 +40,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link to="/quotations">Quotations</Link>
               {user.roles.some((role) => role.name === "SUPER-ADMIN") && <Link to="/users">Users</Link>}
               <span>{user.roles.map((role) => role.name).join(", ")}</span>
+              <NotificationBell />
               <button className="text-cyan-400" onClick={logout} type="button">Logout</button>
             </div>
           </header>

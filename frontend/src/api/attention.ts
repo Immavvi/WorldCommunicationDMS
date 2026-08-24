@@ -1,0 +1,14 @@
+import { apiRequest } from "./client";
+export type Alert={id:string;alert_type:string;severity:string;title:string;message:string;source_entity_type:string;source_entity_id:string;project_id:string|null;loa_id:string|null;triggered_at:string;due_date:string|null;status:string;assigned_role:string|null;resolution_reason:string|null};
+export type Notification={id:string;title:string;message:string;action_url:string|null;is_read:boolean;created_at:string};
+export type AlertRule={id:string;rule_type:string;is_enabled:boolean;warning_days:number|null;severity:string};
+export const listAlerts=(token:string,status="")=>apiRequest<Alert[]>(`/alerts${status?`?status=${status}`:""}`,{token});
+export const myAttention=(token:string)=>apiRequest<Alert[]>("/alerts/my-attention",{token});
+export const alertAction=(token:string,id:string,action:string,reason?:string)=>apiRequest<Alert>(`/alerts/${id}/actions`,{method:"POST",token,body:JSON.stringify({action,reason})});
+export const evaluateAlerts=(token:string)=>apiRequest<{created:number;updated:number;resolved:number}>("/alerts/evaluate",{method:"POST",token});
+export const listRules=(token:string)=>apiRequest<AlertRule[]>("/alert-rules",{token});
+export const updateRule=(token:string,id:string,body:unknown)=>apiRequest<AlertRule>(`/alert-rules/${id}`,{method:"PATCH",token,body:JSON.stringify(body)});
+export const listNotifications=(token:string)=>apiRequest<Notification[]>("/notifications",{token});
+export const unreadCount=(token:string)=>apiRequest<{count:number}>("/notifications/unread-count",{token});
+export const markRead=(token:string,id:string)=>apiRequest<Notification>(`/notifications/${id}/read`,{method:"POST",token});
+export const markAllRead=(token:string)=>apiRequest<{updated:number}>("/notifications/read-all",{method:"POST",token});

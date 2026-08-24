@@ -227,6 +227,8 @@ Supply Challans, Proforma and Tax Invoices, quotations, approved PDF/Excel docum
 generation, historical document snapshots, and serialized Asset lifecycle management.
 It also includes customer-payment receipts, controlled allocation to issued Tax Invoices,
 and derived receivable/outstanding positions.
+The authenticated application also provides an operational Alerts inbox, configurable
+warning rules, idempotent condition evaluation, and private in-app Notifications.
 
 Serialized Assets originate from verified accepted receipt lines, retain PO/GRN and
 Project/LOA traceability, use centralized `AST-` numbering, and preserve append-oriented
@@ -311,4 +313,7 @@ npm run build
 - Phase 14 payments and receivables: centralized `RCT-` receipt numbering, customer and bank
   snapshots, draft allocation, protected confirmation/reversal, partial and multi-invoice
   settlement, and derived overdue/outstanding status
-- PostgreSQL migrations: additive foundations through customer payments and receivables
+- Phase 15 attention layer: configurable workflow, delivery, discrepancy, deadline, warranty,
+  Asset exception and receivable Alerts with acknowledgement, resolution, deduplication,
+  role-targeted Notifications, and a protected manual evaluator
+- PostgreSQL migrations: additive foundations through Alerts and in-app Notifications

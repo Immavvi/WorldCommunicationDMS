@@ -70,6 +70,21 @@ vi.mock("../src/api/assets", () => ({
   transitionAsset: vi.fn(),
 }));
 
+vi.mock("../src/api/attention", () => ({
+  listAlerts: vi.fn().mockResolvedValue([{ id:"alert-1", alert_type:"RECEIVABLE_DUE",
+    severity:"HIGH", title:"Invoice overdue", message:"Invoice INV-1 is overdue.",
+    source_entity_type:"tax_invoice", source_entity_id:"inv-1", project_id:"project-1",
+    loa_id:null, triggered_at:"2026-08-24T10:00:00Z", due_date:"2026-08-20",
+    status:"OPEN", assigned_role:"SUPER-ADMIN", resolution_reason:null }]),
+  myAttention: vi.fn().mockResolvedValue([]), alertAction: vi.fn(), evaluateAlerts: vi.fn(),
+  listRules: vi.fn().mockResolvedValue([{ id:"rule-1",rule_type:"RECEIVABLE_DUE",
+    is_enabled:true,warning_days:7,severity:"MEDIUM" }]), updateRule: vi.fn(),
+  listNotifications: vi.fn().mockResolvedValue([{id:"note-1",title:"Invoice overdue",
+    message:"Invoice INV-1 is overdue.",action_url:"/tax-invoices/inv-1",is_read:false,
+    created_at:"2026-08-24T10:00:00Z"}]),
+  unreadCount: vi.fn().mockResolvedValue({count:1}), markRead: vi.fn(), markAllRead: vi.fn(),
+}));
+
 vi.mock("../src/api/dispatch", () => ({
   listChallans: vi.fn().mockResolvedValue([]),
   getDispatchAvailability: vi.fn().mockResolvedValue([]),
@@ -290,6 +305,20 @@ test("shows payment register and role-aware finance actions", async () => {
   expect(screen.getByText(/unallocated ₹200.00/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Receivables" })).toBeInTheDocument();
+});
+
+test("shows Alerts inbox, severity, rules, and notification count", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/alerts");
+  mockedGetCurrentUser.mockResolvedValue({ id:"super-id",email:"super@example.com",
+    is_active:true,roles:[{name:"SUPER-ADMIN"}] });
+  render(<App />);
+  expect(await screen.findByRole("heading",{name:"Alerts"})).toBeInTheDocument();
+  expect(screen.getByText(/HIGH — Invoice overdue/)).toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"Acknowledge"})).toBeInTheDocument();
+  expect(screen.getByRole("heading",{name:"Alert Rule Settings"})).toBeInTheDocument();
+  expect(await screen.findByLabelText("Unread notifications")).toHaveTextContent("1");
+  expect(screen.getByRole("link",{name:"Alerts"})).toBeInTheDocument();
 });
 
 test("shows derived receivable position", async () => {

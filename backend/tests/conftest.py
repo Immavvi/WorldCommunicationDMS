@@ -16,6 +16,7 @@ from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
+from app.models.attention import AlertRule
 from app.models.auth import Role, User
 from app.models.procurement import NumberingSeries
 
@@ -63,6 +64,14 @@ async def client(tmp_path) -> AsyncGenerator[AsyncClient]:
                 NumberingSeries(
                     document_type="CUSTOMER_RECEIPT", prefix="RCT-", next_number=1, padding=6
                 ),
+                AlertRule(rule_type="WORKFLOW_PENDING", severity="HIGH"),
+                AlertRule(rule_type="PO_DELIVERY", warning_days=7, severity="MEDIUM"),
+                AlertRule(rule_type="GRN_DISCREPANCY", severity="HIGH"),
+                AlertRule(rule_type="PROJECT_DEADLINE", warning_days=30, severity="MEDIUM"),
+                AlertRule(rule_type="LOA_DEADLINE", warning_days=30, severity="MEDIUM"),
+                AlertRule(rule_type="WARRANTY_EXPIRY", warning_days=30, severity="MEDIUM"),
+                AlertRule(rule_type="RECEIVABLE_DUE", warning_days=7, severity="MEDIUM"),
+                AlertRule(rule_type="ASSET_EXCEPTION", severity="HIGH"),
                 User(
                     email="admin@example.com",
                     password_hash=hash_password("admin-user-password"),
