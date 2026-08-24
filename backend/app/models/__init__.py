@@ -32,6 +32,7 @@ from app.models.master_data import (
     TermsConditionVersion,
     UnitOfMeasure,
 )
+from app.models.payments import CustomerPayment, PaymentAllocation
 from app.models.procurement import (
     NumberingSeries,
     ProcurementRequirement,
@@ -48,6 +49,7 @@ __all__ = [
     "AssetLifecycleEvent",
     "ChallanReceiptAllocation",
     "ChallanAssetAssignment",
+    "CustomerPayment",
     "BankAccount",
     "GstRegistration",
     "HsnCode",
@@ -67,6 +69,7 @@ __all__ = [
     "PartyAddress",
     "PartyRole",
     "PaymentTerm",
+    "PaymentAllocation",
     "Permission",
     "ProformaInvoice",
     "ProformaInvoiceLine",

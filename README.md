@@ -225,6 +225,8 @@ The current application includes authentication/RBAC, Master Data, Railway hiera
 Project/LOA contracts and variations, procurement and Purchase Orders, receiving,
 Supply Challans, Proforma and Tax Invoices, quotations, approved PDF/Excel document
 generation, historical document snapshots, and serialized Asset lifecycle management.
+It also includes customer-payment receipts, controlled allocation to issued Tax Invoices,
+and derived receivable/outstanding positions.
 
 Serialized Assets originate from verified accepted receipt lines, retain PO/GRN and
 Project/LOA traceability, use centralized `AST-` numbering, and preserve append-oriented
@@ -306,5 +308,7 @@ npm run build
   PO commitments, GST calculations, commercial snapshots, and controlled approval/issue workflow
 - Phase 06 GRN/material receiving: partial receipts, discrepancy capture, verified accepted-quantity
   control, and derived Purchase Order fulfillment
-- Downstream business transactions and document generation: not implemented
-- PostgreSQL migrations: authentication and master-data foundations
+- Phase 14 payments and receivables: centralized `RCT-` receipt numbering, customer and bank
+  snapshots, draft allocation, protected confirmation/reversal, partial and multi-invoice
+  settlement, and derived overdue/outstanding status
+- PostgreSQL migrations: additive foundations through customer payments and receivables

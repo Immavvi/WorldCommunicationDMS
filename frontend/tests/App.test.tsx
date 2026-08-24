@@ -105,6 +105,21 @@ vi.mock("../src/api/invoicing", () => ({
     amount_in_words: "Indian Rupees One Hundred Eighteen Only" }),
 }));
 
+vi.mock("../src/api/payments", () => ({
+  listPayments: vi.fn().mockResolvedValue([{ id: "pay-1", receipt_number: "RCT-000001",
+    receipt_date: "2026-08-28", customer_party_id: "customer-1", organization_id: "org-1",
+    payment_mode: "NEFT", transaction_reference: "UTR-1", amount_received: "500.00",
+    status: "DRAFT", customer_snapshot: { legal_name: "Customer" }, allocations: [],
+    allocated_amount: "300.00", unallocated_amount: "200.00" }]),
+  listReceivables: vi.fn().mockResolvedValue([{ tax_invoice_id: "inv-1",
+    invoice_number: "INV-000001", customer_name: "Customer", project_name: "Project",
+    loa_number: "LOA/1", due_date: "2026-08-20", invoice_total: "1180.00",
+    received_amount: "500.00", outstanding_amount: "680.00",
+    payment_status: "PARTIALLY_PAID_OVERDUE", days_overdue: 4 }]),
+  eligibleInvoices: vi.fn().mockResolvedValue([]), createPayment: vi.fn(),
+  allocatePayment: vi.fn(), paymentAction: vi.fn(),
+}));
+
 vi.mock("../src/api/quotations", () => ({
   listQuotations: vi.fn().mockResolvedValue([]), createQuotation: vi.fn(),
   updateQuotation: vi.fn(), addQuotationLine: vi.fn(), updateQuotationLine: vi.fn(),
@@ -262,6 +277,30 @@ test("shows Asset register and remaining serial registration quantity", async ()
   expect(screen.getByText(/Accepted: 10, Registered: 7, Remaining: 3/)).toBeInTheDocument();
   expect(screen.getByText("AST-000001")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Assets" })).toBeInTheDocument();
+});
+
+test("shows payment register and role-aware finance actions", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/payments");
+  mockedGetCurrentUser.mockResolvedValue({ id: "super-id", email: "super@example.com",
+    is_active: true, roles: [{ name: "SUPER-ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Customer Payments" })).toBeInTheDocument();
+  expect(screen.getByText("RCT-000001")).toBeInTheDocument();
+  expect(screen.getByText(/unallocated ₹200.00/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Confirm" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Receivables" })).toBeInTheDocument();
+});
+
+test("shows derived receivable position", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/receivables");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com",
+    is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Receivables" })).toBeInTheDocument();
+  expect(screen.getByText("PARTIALLY_PAID_OVERDUE (4 days)")).toBeInTheDocument();
+  expect(screen.getByText("₹680.00")).toBeInTheDocument();
 });
 
 test("shows verified-material Challan workflow without commercial fields", async () => {

@@ -1,0 +1,5 @@
+import { useEffect, useState } from "react";
+import { listReceivables, type Receivable } from "../api/payments";
+import { useAuth } from "../auth/AuthContext";
+
+export function ReceivablesPage(){const {token}=useAuth();const [rows,setRows]=useState<Receivable[]>([]);useEffect(()=>{if(token)void listReceivables(token).then(setRows);},[token]);return <section className="space-y-6"><div><p className="text-sm tracking-[.2em] text-cyan-400">PHASE 14</p><h1 className="text-3xl font-semibold">Receivables</h1><p>Derived from issued Tax Invoices and confirmed customer-payment allocations.</p></div><div className="overflow-x-auto"><table className="w-full text-left"><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Received</th><th>Outstanding</th><th>Status</th></tr></thead><tbody>{rows.map(x=><tr key={x.tax_invoice_id}><td>{x.invoice_number}</td><td>{x.customer_name}</td><td>₹{x.invoice_total}</td><td>₹{x.received_amount}</td><td>₹{x.outstanding_amount}</td><td>{x.payment_status}{x.days_overdue>0?` (${x.days_overdue} days)`:""}</td></tr>)}</tbody></table></div></section>}
