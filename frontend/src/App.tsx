@@ -23,6 +23,7 @@ import { DispatchPage } from "./pages/DispatchPage";
 import { ChallanDetailPage } from "./pages/ChallanDetailPage";
 import { QuotationsPage } from "./pages/QuotationsPage";
 import { QuotationDetailPage } from "./pages/QuotationDetailPage";
+import { AssetsPage } from "./pages/AssetsPage";
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/purchase-orders/:poId" element={<PurchaseOrderDetailPage />} />
               <Route path="/procurement-requirements/:requirementId" element={<RequirementDetailPage />} />
               <Route path="/receiving" element={<ReceivingPage />} />
+              <Route path="/assets" element={<AssetsPage />} />
               <Route path="/material-receipts/:receiptId" element={<ReceiptDetailPage />} />
               <Route path="/dispatch" element={<DispatchPage />} />
               <Route path="/supply-challans/:challanId" element={<ChallanDetailPage />} />

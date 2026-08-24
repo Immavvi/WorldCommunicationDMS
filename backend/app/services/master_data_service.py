@@ -120,6 +120,7 @@ RESOURCE_FIELDS = {
         "hsn_code_id",
         "default_tax_rate_set_id",
         "specifications",
+        "tracking_class",
     },
     "units": {"code", "name", "symbol", "decimal_places"},
     "hsn-codes": {"code", "description"},

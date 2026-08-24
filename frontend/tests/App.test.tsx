@@ -50,6 +50,26 @@ vi.mock("../src/api/receiving", () => ({
     status: "RECEIVED", lines: [] }),
 }));
 
+vi.mock("../src/api/assets", () => ({
+  listAssets: vi.fn().mockResolvedValue([{
+    id: "asset-1", asset_number: "AST-000001", manufacturer_serial_number: "SERIAL-1",
+    product_snapshot: "Managed switch", oem_snapshot: "OEM", model_snapshot: "MODEL-1",
+    status: "AVAILABLE", project_snapshot: "Railway Project", loa_snapshot: "LOA/1",
+    current_site: "Station A", current_building: null, current_room: "OFC Room",
+    current_rack: null, current_position: null, warranty_expiry_date: "2027-08-24",
+    events: [{ id: "event-1", event_type: "REGISTER", from_status: null,
+      to_status: "REGISTERED", to_location_snapshot: null, event_at: "2026-08-24T10:00:00Z",
+      reason: "Receipt registration" }],
+  }]),
+  assetRegistrationPositions: vi.fn().mockResolvedValue([{
+    material_receipt_line_id: "receipt-line-1", receipt_number: "GRN-000001",
+    product_snapshot: "Managed switch", accepted_quantity: 10, already_registered: 7,
+    remaining_quantity: 3,
+  }]),
+  registerAssets: vi.fn(),
+  transitionAsset: vi.fn(),
+}));
+
 vi.mock("../src/api/dispatch", () => ({
   listChallans: vi.fn().mockResolvedValue([]),
   getDispatchAvailability: vi.fn().mockResolvedValue([]),
@@ -230,6 +250,18 @@ test("shows receipt verification only to SUPER-ADMIN", async () => {
   render(<App />);
   expect(await screen.findByRole("heading", { name: "GRN-000001" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Verify" })).toBeInTheDocument();
+});
+
+test("shows Asset register and remaining serial registration quantity", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/assets");
+  mockedGetCurrentUser.mockResolvedValue({ id: "admin-id", email: "admin@example.com",
+    is_active: true, roles: [{ name: "ADMIN" }] });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Assets" })).toBeInTheDocument();
+  expect(screen.getByText(/Accepted: 10, Registered: 7, Remaining: 3/)).toBeInTheDocument();
+  expect(screen.getByText("AST-000001")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Assets" })).toBeInTheDocument();
 });
 
 test("shows verified-material Challan workflow without commercial fields", async () => {

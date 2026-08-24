@@ -29,6 +29,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link to="/projects">Projects & LOAs</Link>
               <Link to="/procurement">Procurement & POs</Link>
               <Link to="/receiving">GRN / Receipts</Link>
+              <Link to="/assets">Assets</Link>
               <Link to="/dispatch">Challans / Dispatch</Link>
               <Link to="/proforma-invoices">Proforma Invoices</Link>
               <Link to="/tax-invoices">Tax Invoices</Link>

@@ -1,3 +1,4 @@
+from app.models.assets import Asset, AssetLifecycleEvent, ChallanAssetAssignment
 from app.models.auth import AuditLog, Permission, Role, User
 from app.models.billing import ProformaInvoice, ProformaInvoiceLine
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
@@ -43,7 +44,10 @@ from app.models.receiving import MaterialReceipt, MaterialReceiptLine
 
 __all__ = [
     "AuditLog",
+    "Asset",
+    "AssetLifecycleEvent",
     "ChallanReceiptAllocation",
+    "ChallanAssetAssignment",
     "BankAccount",
     "GstRegistration",
     "HsnCode",

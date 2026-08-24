@@ -63,6 +63,7 @@ Supporting systems include:
 - Products
 - Units of Measure
 - Technical Specifications
+- Explicit `SERIALIZED`, `QUANTITY_TRACKED`, and `NON_STOCK` tracking classification
 
 ### Project and Contract
 
@@ -91,6 +92,10 @@ Supporting systems include:
 - Asset Movement
 - Installation
 - Warranty
+- Verified receipt-to-Asset quantity control
+- Append-only lifecycle history
+- Structured Railway and non-Railway placement
+- Serialized Challan assignment
 
 ### Billing and Finance
 
@@ -214,9 +219,18 @@ Repository / Data Access
 PostgreSQL
 ```
 
-## Foundation setup
+## Implemented application foundation
 
-Phase 01 establishes only the cross-cutting application foundation: FastAPI, SQLAlchemy 2.x, Alembic, JWT/password-security primitives, RBAC tables, and a React/TypeScript/Vite/Tailwind frontend. No Railway business modules have been implemented.
+The current application includes authentication/RBAC, Master Data, Railway hierarchy,
+Project/LOA contracts and variations, procurement and Purchase Orders, receiving,
+Supply Challans, Proforma and Tax Invoices, quotations, approved PDF/Excel document
+generation, historical document snapshots, and serialized Asset lifecycle management.
+
+Serialized Assets originate from verified accepted receipt lines, retain PO/GRN and
+Project/LOA traceability, use centralized `AST-` numbering, and preserve append-oriented
+movement, installation, warranty, repair, replacement, retirement, and disposal history.
+Quantity-tracked and non-stock Products continue to use their authoritative transaction
+quantities without creating individual Asset records.
 
 ### Local requirements
 

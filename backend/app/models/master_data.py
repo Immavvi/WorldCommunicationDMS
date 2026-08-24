@@ -301,6 +301,12 @@ class ProductModel(MasterRecord, Base):
 
 class Product(MasterRecord, Base):
     __tablename__ = "products"
+    __table_args__ = (
+        CheckConstraint(
+            "tracking_class IN ('SERIALIZED','QUANTITY_TRACKED','NON_STOCK')",
+            name="ck_products_tracking_class",
+        ),
+    )
 
     code: Mapped[str] = mapped_column(String(50), unique=True)
     name: Mapped[str] = mapped_column(String(255))
@@ -314,6 +320,9 @@ class Product(MasterRecord, Base):
         ForeignKey("tax_rate_sets.id")
     )
     specifications: Mapped[dict | None] = mapped_column(JSON)
+    tracking_class: Mapped[str] = mapped_column(
+        String(20), default="QUANTITY_TRACKED", server_default="QUANTITY_TRACKED"
+    )
 
 
 class PaymentTerm(MasterRecord, Base):

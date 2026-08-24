@@ -41,6 +41,23 @@ async def issued_po(client: AsyncClient, admin: str, super_admin: str, quantity=
         "units",
         {"code": "GRN-NOS", "name": "GRN Numbers", "symbol": "Nos", "decimal_places": 4},
     )
+    category = await master(
+        client, admin, "product-categories", {"code": "GRN-EQP", "name": "GRN Equipment"}
+    )
+    product = await master(
+        client,
+        admin,
+        "products",
+        {
+            "code": "GRN-SWITCH",
+            "name": "GRN Switch",
+            "description": "Serialized-ready equipment",
+            "business_scope": "BOTH",
+            "category_id": category["id"],
+            "unit_id": unit["id"],
+            "tracking_class": "SERIALIZED",
+        },
+    )
     organization = await master(
         client, admin, "organizations", {"code": "GRN-WC", "legal_name": "World Communication"}
     )
@@ -97,6 +114,7 @@ async def issued_po(client: AsyncClient, admin: str, super_admin: str, quantity=
             "lines": [
                 {
                     "description": "Serialized-ready equipment",
+                    "product_id": product["id"],
                     "unit_id": unit["id"],
                     "ordered_quantity": quantity,
                     "unit_rate": "10",

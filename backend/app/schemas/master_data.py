@@ -14,6 +14,9 @@ class MasterDataWrite(BaseModel):
     trade_name: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=5000)
     business_scope: str | None = Field(default=None, max_length=20)
+    tracking_class: str | None = Field(
+        default=None, pattern="^(SERIALIZED|QUANTITY_TRACKED|NON_STOCK)$"
+    )
     email: str | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=30)
     pan: str | None = Field(default=None, max_length=10)
