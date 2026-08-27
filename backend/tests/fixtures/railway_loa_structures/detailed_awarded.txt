@@ -1,0 +1,21 @@
+LOA Number: SANITIZED/DETAILED/1
+LOA Date: 20/08/2026
+Name of Work: Sanitized communications equipment work
+The total cost of the work at the accepted rates works out to Rs. 350.00.
+
+Awarded Quantities And Rates
+Schedule A-EQUIPMENT
+Sno. Item Desc Item Code Item Qty Unit Rate Bid Amount
+1     Managed communications terminal     EQ-01       2 Numbers       100.00 At Par       200.00
+      including mounting accessories and configuration,
+      inspection requirements and the complete technical specification.
+2     Installation and testing service     SV-02       3 Job            50.00 At Par       150.00
+Schedule Totals 350.00
+Net Bid Value 350.00
+
+Item Breakup
+No break up item added
+
+SOUTH EASTERN RAILWAY
+TENDER DOCUMENT e-Tender No: SANITIZED/DETAILED/1
+99 this attached tender row must not be imported 99 99 Numbers 99.00 At Par 9801.00

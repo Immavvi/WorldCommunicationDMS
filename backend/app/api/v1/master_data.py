@@ -127,3 +127,14 @@ async def set_master_data_active(
 ) -> MasterDataResponse:
     ensure_write_access(resource, current_user)
     return await service.set_active(resource, record_id, active, current_user.id)
+
+
+@router.delete("/{resource}/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_master_data(
+    resource: str,
+    record_id: UUID,
+    current_user: User = MasterManager,
+    service: MasterDataService = Depends(get_service),
+) -> None:
+    ensure_write_access(resource, current_user)
+    await service.delete(resource, record_id, current_user.id)

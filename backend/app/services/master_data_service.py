@@ -1,3 +1,4 @@
+import re
 from typing import Any
 from uuid import UUID
 
@@ -105,9 +106,9 @@ RESOURCE_FIELDS = {
         "email",
         "is_default",
     },
-    "railway-zones": {"code", "name"},
-    "railway-divisions": {"code", "name", "zone_id"},
-    "railway-locations": {"code", "name", "division_id", "location_type"},
+    "railway-zones": {"code", "name", "aliases"},
+    "railway-divisions": {"code", "name", "aliases", "zone_id", "customer_party_id"},
+    "railway-locations": {"code", "name", "aliases", "division_id", "location_type"},
     "product-categories": {"code", "name", "description"},
     "products": {
         "code",
@@ -144,6 +145,7 @@ RESOURCE_FIELDS = {
         "code",
         "name",
         "designation",
+        "aliases",
         "email",
         "phone",
         "roles",
@@ -219,6 +221,8 @@ REQUIRED_FIELDS = {
         "postal_code",
     },
     "railway-zones": {"code", "name"},
+    "railway-divisions": {"code", "name", "zone_id"},
+    "railway-locations": {"code", "name", "division_id", "location_type"},
     "product-categories": {"code", "name"},
     "units": {"code", "name", "symbol"},
     "hsn-codes": {"code", "description"},
@@ -243,7 +247,14 @@ REQUIRED_FIELDS = {
 }
 
 PARTY_ROLES = {"CUSTOMER", "VENDOR", "OEM"}
-AUTHORITY_ROLES = {"CONSIGNEE", "BILL_TO", "SHIP_TO"}
+AUTHORITY_ROLES = {
+    "ISSUING_AUTHORITY",
+    "EXECUTION_AUTHORITY",
+    "CONSIGNEE",
+    "BILL_TO",
+    "SHIP_TO",
+}
+LOCATION_TYPES = {"STATION", "STORE", "OFFICE", "DEPOT", "YARD", "LC_GATE", "BUILDING", "OTHER"}
 TERMS_CONTEXTS = {
     "PURCHASE",
     "SALES_QUOTATION",
@@ -253,6 +264,10 @@ TERMS_CONTEXTS = {
     "NON_RAILWAY",
     "GENERAL",
 }
+
+
+def normalized_master(value: str | None) -> str:
+    return re.sub(r"\b(?:railway|rly|division|zone)\b|[^a-z0-9]", "", (value or "").lower())
 
 
 class MasterDataService:
@@ -307,9 +322,15 @@ class MasterDataService:
     ) -> MasterDataResponse:
         model = self.model_for(resource)
         values = self._values(resource, payload, creating=True)
+        await self._validate_railway_hierarchy(resource, values)
+        await self._validate_normalized_uniqueness(resource, values)
         roles = values.pop("roles", None)
         components = values.pop("components", None)
-        if "code" in values and await self.repository.find_by_code(model, values["code"]):
+        if (
+            "code" in values
+            and resource not in {"railway-divisions", "railway-locations"}
+            and await self.repository.find_by_code(model, values["code"])
+        ):
             raise AppError(409, "master_code_exists", "A record with this code already exists.")
         record = model(**values)
         if resource == "parties":
@@ -340,12 +361,23 @@ class MasterDataService:
         record = await self.get(resource, record_id)
         old = self.serialize(resource, record).data
         values = self._values(resource, payload, creating=False)
+        prospective = {
+            "zone_id": values.get("zone_id", getattr(record, "zone_id", None)),
+            "division_id": values.get("division_id", getattr(record, "division_id", None)),
+            "location_id": values.get("location_id", getattr(record, "location_id", None)),
+        }
+        await self._validate_railway_hierarchy(resource, prospective)
+        await self._validate_normalized_uniqueness(resource, {**old, **values}, record.id)
         roles = values.pop("roles", None)
         values.pop("components", None)
         for name, value in values.items():
             setattr(record, name, value)
         if resource == "parties" and roles is not None:
             record.roles = [PartyRole(role=role) for role in roles]
+        if resource == "railway-authorities" and roles is not None:
+            from app.models.master_data import RailwayAuthorityRole
+
+            record.roles = [RailwayAuthorityRole(role=role) for role in roles]
         await self.repository.save(record)
         response = self.serialize(resource, record)
         self.repository.audit(
@@ -375,6 +407,37 @@ class MasterDataService:
         )
         return self.serialize(resource, record)
 
+    async def delete(self, resource: str, record_id: UUID, actor_id: UUID) -> None:
+        railway_resources = {
+            "railway-zones",
+            "railway-divisions",
+            "railway-locations",
+            "railway-authorities",
+        }
+        if resource not in railway_resources:
+            raise AppError(
+                405,
+                "master_delete_not_allowed",
+                "Physical deletion is allowed only for Railway structured masters.",
+            )
+        record = await self.get(resource, record_id)
+        references = await self.repository.find_external_references(record)
+        if references:
+            raise AppError(
+                409,
+                "master_record_in_use",
+                "This Railway master is already in use. Deactivate it instead.",
+            )
+        old_value = self.serialize(resource, record).data
+        await self.repository.delete(record)
+        self.repository.audit(
+            actor_user_id=actor_id,
+            action="delete",
+            entity_type=resource,
+            entity_id=record.id,
+            old_value=old_value,
+            new_value=None,
+        )
     async def set_primary_organization(
         self, organization_id: UUID, actor_id: UUID
     ) -> MasterDataResponse:
@@ -426,6 +489,12 @@ class MasterDataService:
                     422, "invalid_authority_roles", "One or more authority roles are invalid."
                 )
             supplied["roles"] = sorted(roles)
+        if resource == "railway-locations" and "location_type" in supplied:
+            supplied["location_type"] = supplied["location_type"].upper()
+            if supplied["location_type"] not in LOCATION_TYPES:
+                raise AppError(
+                    422, "invalid_location_type", "The Railway location type is invalid."
+                )
         if resource == "tax-rate-sets" and "components" in supplied:
             components = supplied["components"] or {}
             if not components or not set(components) <= {"CGST", "SGST", "IGST"}:
@@ -433,6 +502,79 @@ class MasterDataService:
         if resource == "terms-condition-sets" and supplied.get("context") not in TERMS_CONTEXTS:
             raise AppError(422, "invalid_terms_context", "The terms context is invalid.")
         return supplied
+
+    async def _validate_railway_hierarchy(self, resource: str, values: dict[str, Any]) -> None:
+        if resource == "railway-divisions":
+            zone = await self.repository.get(RailwayZone, values.get("zone_id"))
+            if zone is None or not zone.is_active:
+                raise AppError(422, "invalid_railway_zone", "Select an active Railway Zone.")
+        if resource in {"railway-locations", "railway-authorities"}:
+            division = await self.repository.get(RailwayDivision, values.get("division_id"))
+            if division is None or not division.is_active:
+                raise AppError(
+                    422, "invalid_railway_division", "Select an active Railway Division."
+                )
+            location_id = values.get("location_id")
+            if resource == "railway-authorities" and location_id:
+                location = await self.repository.get(RailwayLocation, location_id)
+                if location is None or location.division_id != division.id:
+                    raise AppError(
+                        422,
+                        "railway_hierarchy_mismatch",
+                        "The Railway Location does not belong to the selected Division.",
+                    )
+
+    async def _validate_normalized_uniqueness(
+        self, resource: str, values: dict[str, Any], exclude_id: UUID | None = None
+    ) -> None:
+        railway_resources = {
+            "railway-zones",
+            "railway-divisions",
+            "railway-locations",
+            "railway-authorities",
+        }
+        if resource not in railway_resources:
+            return
+        records = await self.repository.list(
+            self.model_for(resource), offset=0, limit=10000, active=True
+        )
+        proposed = {
+            normalized_master(str(value))
+            for value in [
+                values.get("code"),
+                values.get("name"),
+                values.get("designation"),
+                *(values.get("aliases") or []),
+            ]
+            if value
+        }
+        for record in records:
+            if record.id == exclude_id:
+                continue
+            if resource == "railway-divisions" and record.zone_id != values.get("zone_id"):
+                continue
+            if (
+                resource in {"railway-locations", "railway-authorities"}
+                and record.division_id != values.get("division_id")
+            ):
+                continue
+            existing = {
+                normalized_master(str(value))
+                for value in [
+                    record.code,
+                    record.name,
+                    getattr(record, "designation", None),
+                    *(record.aliases or []),
+                ]
+                if value
+            }
+            if proposed & existing:
+                raise AppError(
+                    409,
+                    "normalized_master_exists",
+                    "An active Railway master with the same normalized code, name, or alias "
+                    "already exists in this hierarchy.",
+                )
 
     @staticmethod
     def serialize(resource: str, record) -> MasterDataResponse:
@@ -443,6 +585,15 @@ class MasterDataService:
         }
         if resource == "parties":
             data["roles"] = [role.role for role in record.roles]
+        if resource == "railway-authorities":
+            data["roles"] = [role.role for role in record.roles]
+        if resource == "railway-zones" and re.search(
+            r"\bdivision\b", str(data.get("name", "")), re.IGNORECASE
+        ):
+            data["classification_warning"] = (
+                "This Zone name appears to describe a Division. Review its classification; "
+                "existing references will not be changed automatically."
+            )
         if resource == "bank-accounts" and data.get("account_number"):
             data["account_number"] = f"****{data['account_number'][-4:]}"
         return MasterDataResponse(

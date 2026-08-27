@@ -2,9 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import App from "../src/App";
+import { ApiError } from "../src/api/client";
 import { changePassword, getCurrentUser } from "../src/api/auth";
 import { createUser, listUsers, resetUserPassword, setUserActive } from "../src/api/users";
-import { createMasterData, listMasterData, setPrimaryOrganization } from "../src/api/masterData";
+import { createMasterData, deleteMasterData, listMasterData, setPrimaryOrganization } from "../src/api/masterData";
+import { getLoaImport, resolveLoaImportMasters } from "../src/api/loaImports";
 
 vi.mock("../src/api/auth", () => ({
   getCurrentUser: vi.fn(),
@@ -37,10 +39,44 @@ vi.mock("../src/api/contracts", () => ({
   transitionVariation: vi.fn(),
 }));
 
+vi.mock("../src/api/loaImports", () => ({
+  uploadRailwayLoa: vi.fn().mockResolvedValue({ id: "import-1" }),
+  getLoaImport: vi.fn().mockResolvedValue({
+    id: "import-1", original_filename: "Railway LOA.xlsx", mime_type: "application/xlsx",
+    extension: "xlsx", size_bytes: 2048, uploaded_by_user_id: "admin-id",
+    uploaded_at: "2026-08-24T10:00:00Z", status: "NEEDS_REVIEW",
+    extraction_method: "XLSX", extraction_warnings: ["UOM needs review"],
+    duplicate_candidates: [], loa_number: "LOA/RAIL/20", loa_date: "2026-08-24",
+    railway_zone_id: "zone-1", railway_division_id: "division-1",
+    loa_date_provenance: "SOURCE_EXTRACTED", loa_date_source: "Semantic LOA date label",
+    completion_period: "6 months", completion_date: "2027-02-24",
+    completion_date_provenance: "DERIVED", project_candidates: [],
+    authority_candidates: [{ text: "SSE/TELE/STORE", role: "CONSIGNEE", source: "Consignee label" }],
+    boq_reconciliation: { source_rows_detected: 12, extracted_successfully: 11,
+      needs_review: 1, document_coverage_status: "COMPLETE", complete: false },
+    boq_readiness_issues: [{ scope: "LINE", line_number: 12, field: "outcome",
+      message: "Schedule A - Sn. 12 remains needs review." }],
+    work_description: "Railway communication supply", contract_value: "2469.00",
+    schedules: [{ id: "schedule-1", sequence: 1, source_key: "schedule-a",
+      title_raw: "Schedule A", title_normalized: "Schedule A", reconciliation_status: "NEEDS_REVIEW",
+      groups: [{ id: "group-1", sequence: 1, source_key: "group-1",
+        title_raw: "Awarded Quantities And Rates", title_normalized: "Awarded Quantities And Rates",
+        source_kind: "AWARDED", reconciliation_status: "NEEDS_REVIEW" }] }],
+    lines: Array.from({ length: 12 }, (_, index) => ({ id: `line-${index + 1}`,
+      line_number: index + 1, group_id: "group-1", source_serial: String(index + 1),
+      description: index === 11 ? "Unresolved equipment" : `IP communication terminal ${index + 1}`,
+      unit_text: "Nos", quantity: "3.0000", rate: "823.00", amount: "2469.00",
+      extraction_outcome: index === 11 ? "NEEDS_REVIEW" : "EXTRACTED" })),
+  }),
+  saveLoaImportReview: vi.fn(), retryLoaImport: vi.fn(), resolveLoaImportMasters: vi.fn(), approveLoaImport: vi.fn(),
+  cancelLoaImport: vi.fn(), openOriginalLoa: vi.fn(), mapRailwayCustomer: vi.fn(),
+}));
+
 vi.mock("../src/api/masterData", () => ({
   listMasterData: vi.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }),
   createMasterData: vi.fn().mockResolvedValue({}),
   updateMasterData: vi.fn().mockResolvedValue({}),
+  deleteMasterData: vi.fn().mockResolvedValue(undefined),
   setPrimaryOrganization: vi.fn().mockResolvedValue({}),
   setMasterDataActive: vi.fn().mockResolvedValue({}),
   listTermsVersions: vi.fn().mockResolvedValue([]),
@@ -193,6 +229,7 @@ const mockedResetUserPassword = vi.mocked(resetUserPassword);
 const mockedSetUserActive = vi.mocked(setUserActive);
 const mockedListMasterData = vi.mocked(listMasterData);
 const mockedCreateMasterData = vi.mocked(createMasterData);
+const mockedDeleteMasterData = vi.mocked(deleteMasterData);
 const mockedSetPrimaryOrganization = vi.mocked(setPrimaryOrganization);
 
 beforeEach(() => {
@@ -437,6 +474,188 @@ test("shows the Project and LOA workspace to an ADMIN", async () => {
   });
   render(<App />);
   expect(await screen.findByRole("heading", { name: "Projects & LOAs" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Upload Railway LOA" })).toBeInTheDocument();
+  expect(screen.getAllByText("Create LOA Manually").length).toBeGreaterThan(0);
+});
+
+test("provides owner-facing Railway hierarchy master forms", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/master-data?type=railway-divisions");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "Add Railway Divisions" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Railway Zone")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Add to Railway Master" })).toBeInTheDocument();
+  expect(screen.queryByText(/managed through its validated API/)).not.toBeInTheDocument();
+});
+
+test("confirms and refreshes Railway master deletion with blocked errors visible", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/master-data?type=railway-zones");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  const zone = {
+    id: "zone-delete", resource: "railway-zones", is_active: true,
+    created_at: "2026-08-26T10:00:00Z", updated_at: "2026-08-26T10:00:00Z",
+    data: { code: "DEL", name: "Deletable Railway", aliases: [] },
+  };
+  mockedListMasterData.mockImplementation(async (_token, resource) => ({
+    items: resource === "railway-zones" ? [zone] : [], total: resource === "railway-zones" ? 1 : 0,
+    offset: 0, limit: 50,
+  }));
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Delete Deletable Railway" }));
+  await waitFor(() => expect(mockedDeleteMasterData).toHaveBeenCalledWith(
+    "valid-token", "railway-zones", "zone-delete",
+  ));
+
+  mockedDeleteMasterData.mockRejectedValueOnce(new ApiError(
+    "This Railway master is already in use. Deactivate it instead.", 409, "master_record_in_use",
+  ));
+  fireEvent.click(screen.getByRole("button", { name: "Delete Deletable Railway" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "This Railway master is already in use. Deactivate it instead.",
+  );
+});
+
+test("prefills but does not auto-create an extracted Railway authority suggestion", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/master-data?type=railway-authorities&division_id=division-1&suggestion=DSTE%2FTEST");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect((await screen.findAllByDisplayValue("DSTE/TEST")).length).toBeGreaterThan(0);
+  expect(screen.getByText(/confirm or edit the canonical Railway master data/)).toBeInTheDocument();
+  expect(mockedCreateMasterData).not.toHaveBeenCalled();
+});
+
+test("preserves return navigation from Railway Master to LOA review", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/master-data?type=railway-authorities&returnTo=%2Floa-imports%2Fimport-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("link", { name: "← Return to LOA Review" })).toHaveAttribute(
+    "href", "/loa-imports/import-1",
+  );
+});
+
+test("shows extracted Railway LOA fields and BOQ in mandatory review", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/loa-imports/import-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByRole("heading", { name: "LOA/RAIL/20" })).toBeInTheDocument();
+  expect(screen.getByText("Railway LOA.xlsx")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "BOQ / Item Schedule" })).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Schedule" })).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Sn. No." })).toBeInTheDocument();
+  expect(screen.queryByRole("columnheader", { name: "Item code" })).not.toBeInTheDocument();
+  expect(screen.getAllByText("Schedule A").length).toBeGreaterThan(0);
+  expect(screen.getAllByLabelText("Reviewed Sn. No.")).toHaveLength(12);
+  expect(screen.getByRole("columnheader", { name: "Outcome" })).toBeInTheDocument();
+  expect(screen.getByDisplayValue("IP communication terminal 1")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "View Extraction Details" }));
+  expect(screen.getByText(/Semantic LOA date label/)).toBeInTheDocument();
+  expect(screen.getAllByText(/SSE\/TELE\/STORE/).length).toBeGreaterThan(0);
+  expect(screen.getByText("✓ Matched with Railway Zone Master")).toBeInTheDocument();
+  expect(screen.getByText("✓ Matched with Railway Division Master")).toBeInTheDocument();
+  expect(screen.getByText(/Master mapping: Not configured \(optional\)/)).toBeInTheDocument();
+  expect(screen.queryByText(/Railway Customer mapping required/)).not.toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Required Before Registration" })).toBeInTheDocument();
+  expect(screen.getByText("BOQ Items — All")).toBeInTheDocument();
+  expect(screen.getAllByRole("row")).toHaveLength(13);
+  fireEvent.click(screen.getByRole("button", { name: "Review Missing / Unresolved Items" }));
+  expect(screen.getByText("Unresolved BOQ Items — 1")).toBeInTheDocument();
+  expect(screen.getAllByRole("row")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "View BOQ Items" }));
+  await waitFor(() => expect(screen.getByText("BOQ Items — All")).toBeInTheDocument());
+  expect(screen.getAllByRole("row")).toHaveLength(13);
+  fireEvent.click(screen.getByRole("button", { name: "Review Missing / Unresolved Items" }));
+  fireEvent.click(screen.getByRole("button", { name: "View BOQ Items" }));
+  await waitFor(() => expect(screen.getAllByRole("row")).toHaveLength(13));
+  expect(screen.getByRole("button", { name: "Approve & Create LOA" })).toBeDisabled();
+});
+
+test("keeps complete unmapped BOQ ready and reports Project code separately", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/loa-imports/import-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  const current = await vi.mocked(getLoaImport)("valid-token", "import-1");
+  vi.mocked(getLoaImport).mockResolvedValueOnce({
+    ...current,
+    boq_readiness_issues: [],
+    boq_reconciliation: {
+      source_rows_detected: 12, extracted_successfully: 12, needs_review: 0,
+      unparsed_rejected: 0, document_coverage_status: "COMPLETE", complete: true,
+    },
+    lines: current.lines.map((line) => ({
+      ...line, product_id: undefined, unit_id: undefined, unit_text: "Numbers",
+      extraction_outcome: "EXTRACTED" as const,
+    })),
+  });
+  render(<App />);
+  expect(await screen.findByText("✓ Complete — 12/12 source items reconciled")).toBeInTheDocument();
+  expect(screen.queryByText("Mandatory BOQ mappings require review")).not.toBeInTheDocument();
+  expect(screen.getByText("New Project code is required")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Review Missing / Unresolved Items" }));
+  expect(screen.getByText("Unresolved BOQ Items — 0")).toBeInTheDocument();
+  expect(screen.getAllByRole("row")).toHaveLength(1);
+  fireEvent.input(screen.getByLabelText("New Project code"), { target: { value: "RAIL-NEW" } });
+  await waitFor(() => expect(screen.queryByText("New Project code is required")).not.toBeInTheDocument());
+});
+
+test("refreshes Railway master matches with loading, immediate state, and errors", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/loa-imports/import-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  vi.mocked(resolveLoaImportMasters).mockRejectedValueOnce(new Error("network"));
+  render(<App />);
+  fireEvent.click(await screen.findByRole("button", { name: "Refresh Railway Master Matches" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Unable to refresh Railway Master matches.");
+
+  let finishRefresh!: (value: Awaited<ReturnType<typeof getLoaImport>>) => void;
+  vi.mocked(resolveLoaImportMasters).mockImplementationOnce(() => new Promise((resolve) => { finishRefresh = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh Railway Master Matches" }));
+  expect(screen.getByRole("button", { name: "Refreshing Railway Master Matches…" })).toBeDisabled();
+  const current = await vi.mocked(getLoaImport)("valid-token", "import-1");
+  finishRefresh({
+    ...current,
+    authority_id: "authority-1",
+    authority_candidates: current.authority_candidates.map((candidate) => ({
+      ...candidate, master_id: "authority-1", master_status: "MATCHED" as const,
+      master_detail: "Exactly one active authority matched the Division and contextual role.",
+    })),
+  });
+  expect(await screen.findByText("Railway Master matches refreshed.")).toBeInTheDocument();
+  expect(screen.getByText(/Exactly one active authority matched/)).toBeInTheDocument();
+  expect(vi.mocked(resolveLoaImportMasters)).toHaveBeenLastCalledWith("valid-token", "import-1");
+});
+
+test("uses Railway masters without exposing a mandatory Customer mapping workflow", async () => {
+  sessionStorage.setItem("wcdms.access-token", "valid-token");
+  window.history.replaceState({}, "", "/loa-imports/import-1");
+  mockedGetCurrentUser.mockResolvedValue({
+    id: "admin-id", email: "admin@example.com", is_active: true, roles: [{ name: "ADMIN" }],
+  });
+  render(<App />);
+  expect(await screen.findByText("✓ Matched with Railway Zone Master")).toBeInTheDocument();
+  expect(screen.getByText("✓ Matched with Railway Division Master")).toBeInTheDocument();
+  expect(screen.queryByRole("combobox", { name: "WCDMS Customer" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Save Railway Mapping" })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Railway Customer mapping required/)).not.toBeInTheDocument();
 });
 
 test("presents original variations and current approved position on LOA detail", async () => {

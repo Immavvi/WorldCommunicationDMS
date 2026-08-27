@@ -1,0 +1,26 @@
+LOA Number: SANITIZED/BREAKUP/1
+LOA Date: 20/08/2026
+Name of Work: Sanitized grouped schedule work
+The total cost of the work at the accepted rates works out to Rs. 250.00.
+
+Awarded Quantities And Rates
+Schedule B-GROUPED WORK
+1     View Details     GROUP-1       1 Lot       250.00 At Par       250.00
+
+Item Breakup
+Schedule B-GROUPED WORK
+Item - 01 SANITIZED GROUP
+S No. Item No Description of Item Unit Qty Rate Amount
+
+Complete first contractual description before the numeric row,
+including the technical clause that continues across the page.
+1  BK-01 first interpreted fragment  Metre  2  50.00  100.00
+
+https://example.ireps.gov.in/printed/reference Page 1 of 2
+S No. Item No Description of Item Unit Qty Rate Amount
+continuation on the next PDF page without terminating the item.
+
+Second contractual description without a separate item code.
+2  Installation service  Job  3  50.00  150.00
+
+Total 250.00

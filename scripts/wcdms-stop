@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -u
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/_wcdms-common"
+
+lock="$WCDMS_RUNTIME/control.lock"
+if ! mkdir "$lock" 2>/dev/null; then
+  printf 'Another WCDMS start/stop operation is in progress.\n' >&2
+  exit 1
+fi
+trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+
+result=0
+wcdms_stop_service frontend "$WCDMS_FRONTEND_PID" 5173 || result=1
+wcdms_stop_service backend "$WCDMS_BACKEND_PID" 8000 || result=1
+exit "$result"

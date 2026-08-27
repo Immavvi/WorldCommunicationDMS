@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -32,13 +33,17 @@ class LoaItem(Base):
     loa_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("loas.id"))
     item_number: Mapped[str] = mapped_column(String(50))
     product_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("products.id"))
-    description: Mapped[str] = mapped_column(String(2000))
+    description: Mapped[str] = mapped_column(Text)
     hsn_code_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("hsn_codes.id"))
-    unit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("units_of_measure.id"))
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units_of_measure.id"))
+    unit_text: Mapped[str | None] = mapped_column(String(100))
     original_approved_quantity: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     contractual_rate: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     original_line_value: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     remarks: Mapped[str | None] = mapped_column(String(1000))
+    source_page: Mapped[int | None]
+    source_serial: Mapped[str | None] = mapped_column(String(50))
+    source_raw_text: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

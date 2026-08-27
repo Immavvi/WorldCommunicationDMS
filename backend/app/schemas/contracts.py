@@ -9,7 +9,7 @@ class ProjectCreate(BaseModel):
     code: str = Field(min_length=1, max_length=50)
     name: str = Field(min_length=1, max_length=255)
     work_reference: str | None = Field(default=None, max_length=255)
-    customer_party_id: UUID
+    customer_party_id: UUID | None = None
     business_scope: str = Field(pattern="^(RAILWAY|NON_RAILWAY)$")
     railway_zone_id: UUID | None = None
     railway_division_id: UUID | None = None
@@ -45,7 +45,7 @@ class LoaCreate(BaseModel):
     issuing_party_id: UUID | None = None
     railway_division_id: UUID | None = None
     customer_reference: str | None = Field(default=None, max_length=255)
-    description: str | None = Field(default=None, max_length=1000)
+    description: str | None = Field(default=None, max_length=10000)
     original_contract_value: Decimal = Field(
         default=Decimal("0.00"), ge=0, max_digits=18, decimal_places=2
     )
@@ -59,7 +59,7 @@ class LoaUpdate(BaseModel):
     issuing_party_id: UUID | None = None
     railway_division_id: UUID | None = None
     customer_reference: str | None = Field(default=None, max_length=255)
-    description: str | None = Field(default=None, max_length=1000)
+    description: str | None = Field(default=None, max_length=10000)
     original_contract_value: Decimal | None = Field(
         default=None, ge=0, max_digits=18, decimal_places=2
     )
@@ -81,12 +81,16 @@ class LoaResponse(LoaCreate):
 class LoaItemCreate(BaseModel):
     item_number: str = Field(min_length=1, max_length=50)
     product_id: UUID | None = None
-    description: str = Field(min_length=1, max_length=2000)
+    description: str = Field(min_length=1, max_length=10000)
     hsn_code_id: UUID | None = None
-    unit_id: UUID
+    unit_id: UUID | None = None
+    unit_text: str | None = Field(default=None, max_length=100)
     original_approved_quantity: Decimal = Field(gt=0, max_digits=18, decimal_places=4)
     contractual_rate: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
     remarks: str | None = Field(default=None, max_length=1000)
+    source_page: int | None = Field(default=None, ge=1)
+    source_serial: str | None = Field(default=None, max_length=50)
+    source_raw_text: str | None = Field(default=None, max_length=10000)
 
 
 class LoaItemResponse(LoaItemCreate):
@@ -158,7 +162,8 @@ class ApprovedPositionLine(BaseModel):
     product_id: UUID | None = None
     description: str
     hsn_code_id: UUID | None = None
-    unit_id: UUID
+    unit_id: UUID | None
+    unit_text: str | None = None
     original_quantity: Decimal
     positive_variation_quantity: Decimal
     negative_variation_quantity: Decimal

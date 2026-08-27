@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+set -u
+
+WCDMS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+WCDMS_RUNTIME="$WCDMS_ROOT/.runtime"
+WCDMS_BACKEND_PID="$WCDMS_RUNTIME/backend.pid"
+WCDMS_FRONTEND_PID="$WCDMS_RUNTIME/frontend.pid"
+WCDMS_BACKEND_LOG="$WCDMS_RUNTIME/backend.log"
+WCDMS_FRONTEND_LOG="$WCDMS_RUNTIME/frontend.log"
+
+mkdir -p "$WCDMS_RUNTIME"
+
+wcdms_pid_command() {
+  ps -p "$1" -o command= 2>/dev/null || true
+}
+
+wcdms_valid_pid() {
+  local service="$1" pid="$2" command marker
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  command="$(wcdms_pid_command "$pid")"
+  case "$service" in
+    backend) marker="uvicorn" ;;
+    frontend) marker="vite" ;;
+    *) return 1 ;;
+  esac
+  [[ "$command" == *"$WCDMS_ROOT"* && "$command" == *"$marker"* ]]
+}
+
+wcdms_read_managed_pid() {
+  local service="$1" pid_file="$2" pid
+  [[ -f "$pid_file" ]] || return 1
+  IFS= read -r pid < "$pid_file"
+  if wcdms_valid_pid "$service" "$pid"; then
+    printf '%s\n' "$pid"
+    return 0
+  fi
+  rm -f "$pid_file"
+  return 1
+}
+
+wcdms_port_pid() {
+  lsof -nP -iTCP:"$1" -sTCP:LISTEN -t 2>/dev/null | head -n 1
+}
+
+wcdms_wait_url() {
+  local url="$1" attempts="${2:-40}"
+  while (( attempts > 0 )); do
+    if curl --silent --fail --max-time 1 "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.25
+    attempts=$((attempts - 1))
+  done
+  return 1
+}
+
+wcdms_wait_port_free() {
+  local port="$1" attempts="${2:-40}"
+  while (( attempts > 0 )); do
+    [[ -z "$(wcdms_port_pid "$port")" ]] && return 0
+    sleep 0.25
+    attempts=$((attempts - 1))
+  done
+  return 1
+}
+
+wcdms_stop_service() {
+  local service="$1" pid_file="$2" port="$3" pid
+  if ! pid="$(wcdms_read_managed_pid "$service" "$pid_file")"; then
+    printf '%s already stopped.\n' "$service"
+    return 0
+  fi
+  kill -TERM "$pid"
+  local attempts=40
+  while kill -0 "$pid" 2>/dev/null && (( attempts > 0 )); do
+    sleep 0.25
+    attempts=$((attempts - 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    if wcdms_valid_pid "$service" "$pid"; then
+      kill -KILL "$pid"
+    else
+      printf 'Refusing to force-stop PID %s: process identity changed.\n' "$pid" >&2
+      return 1
+    fi
+  fi
+  rm -f "$pid_file"
+  if ! wcdms_wait_port_free "$port"; then
+    printf '%s stopped, but port %s remains occupied by PID %s.\n' \
+      "$service" "$port" "$(wcdms_port_pid "$port")" >&2
+    return 1
+  fi
+  printf '%s stopped.\n' "$service"
+}

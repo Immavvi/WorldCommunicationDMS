@@ -7,6 +7,7 @@ import { ForbiddenPage } from "./pages/ForbiddenPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MasterDataPage } from "./pages/MasterDataPage";
 import { LoaDetailPage } from "./pages/LoaDetailPage";
+import { LoaImportReviewPage } from "./pages/LoaImportReviewPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProcurementPage } from "./pages/ProcurementPage";
 import { PurchaseOrderDetailPage } from "./pages/PurchaseOrderDetailPage";
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/master-data" element={<MasterDataPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/loas/:loaId" element={<LoaDetailPage />} />
+              <Route path="/loa-imports/:importId" element={<LoaImportReviewPage />} />
               <Route path="/procurement" element={<ProcurementPage />} />
               <Route path="/purchase-orders/:poId" element={<PurchaseOrderDetailPage />} />
               <Route path="/procurement-requirements/:requirementId" element={<RequirementDetailPage />} />

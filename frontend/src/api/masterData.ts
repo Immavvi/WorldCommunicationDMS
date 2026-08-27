@@ -61,7 +61,13 @@ export function setMasterDataActive(
     token,
   });
 }
-
+export function deleteMasterData(
+  token: string,
+  resource: string,
+  id: string,
+): Promise<void> {
+  return apiRequest<void>(`/master-data/${resource}/${id}`, { method: "DELETE", token });
+}
 export type TermsVersion = { id: string; terms_set_id: string; version: number; content: string };
 export function listTermsVersions(token: string, termsSetId: string): Promise<TermsVersion[]> {
   return apiRequest<TermsVersion[]>(`/master-data/terms-condition-sets/${termsSetId}/versions`, { token });

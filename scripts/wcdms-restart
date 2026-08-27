@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -u
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+"$script_dir/wcdms-stop" || exit 1
+"$script_dir/wcdms-start" || exit 1
+"$script_dir/wcdms-status"

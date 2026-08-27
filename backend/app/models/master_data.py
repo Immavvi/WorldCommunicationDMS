@@ -167,6 +167,7 @@ class RailwayZone(MasterRecord, Base):
 
     code: Mapped[str] = mapped_column(String(20), unique=True)
     name: Mapped[str] = mapped_column(String(255), unique=True)
+    aliases: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
 
 
 class RailwayDivision(MasterRecord, Base):
@@ -176,6 +177,8 @@ class RailwayDivision(MasterRecord, Base):
     zone_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("railway_zones.id"))
     code: Mapped[str] = mapped_column(String(20))
     name: Mapped[str] = mapped_column(String(255))
+    aliases: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+    customer_party_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parties.id"))
 
 
 class RailwayLocation(MasterRecord, Base):
@@ -186,6 +189,7 @@ class RailwayLocation(MasterRecord, Base):
     code: Mapped[str] = mapped_column(String(30))
     name: Mapped[str] = mapped_column(String(255))
     location_type: Mapped[str | None] = mapped_column(String(50))
+    aliases: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
 
 
 class RailwayAuthority(MasterRecord, Base):
@@ -196,6 +200,7 @@ class RailwayAuthority(MasterRecord, Base):
     code: Mapped[str] = mapped_column(String(30), unique=True)
     name: Mapped[str] = mapped_column(String(255))
     designation: Mapped[str | None] = mapped_column(String(255))
+    aliases: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
     email: Mapped[str | None] = mapped_column(String(320))
     phone: Mapped[str | None] = mapped_column(String(30))
     roles: Mapped[list["RailwayAuthorityRole"]] = relationship(
@@ -207,7 +212,8 @@ class RailwayAuthorityRole(Base):
     __tablename__ = "railway_authority_roles"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('CONSIGNEE','BILL_TO','SHIP_TO')", name="ck_railway_authority_roles_role"
+            "role IN ('ISSUING_AUTHORITY','EXECUTION_AUTHORITY','CONSIGNEE','BILL_TO','SHIP_TO')",
+            name="ck_railway_authority_roles_role",
         ),
     )
 
@@ -364,7 +370,7 @@ class Project(MasterRecord, Base):
     code: Mapped[str] = mapped_column(String(50), unique=True)
     name: Mapped[str] = mapped_column(String(255))
     work_reference: Mapped[str | None] = mapped_column(String(255))
-    customer_party_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("parties.id"))
+    customer_party_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("parties.id"))
     business_scope: Mapped[str] = mapped_column(String(20))
     railway_zone_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("railway_zones.id", name="fk_projects_railway_zone")
@@ -391,7 +397,7 @@ class Loa(MasterRecord, Base):
         ForeignKey("railway_divisions.id", name="fk_loas_railway_division")
     )
     customer_reference: Mapped[str | None] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(String(1000))
+    description: Mapped[str | None] = mapped_column(Text)
     original_contract_value: Mapped[Decimal] = mapped_column(
         Numeric(18, 2), default=Decimal("0.00"), server_default="0.00"
     )

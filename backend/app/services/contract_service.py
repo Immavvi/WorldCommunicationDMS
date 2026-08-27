@@ -34,7 +34,14 @@ class ContractService:
         return await self.repository.list_projects()
 
     async def create_project(self, payload: ProjectCreate, actor_id: UUID) -> Project:
-        await self._validate_customer(payload.customer_party_id)
+        if payload.customer_party_id:
+            await self._validate_customer(payload.customer_party_id)
+        elif payload.business_scope != "RAILWAY":
+            raise AppError(
+                422,
+                "customer_required",
+                "Non-Railway projects require a Customer party.",
+            )
         if payload.business_scope == "RAILWAY" and payload.railway_division_id is None:
             raise AppError(422, "railway_division_required", "Railway projects require a division.")
         project = Project(**payload.model_dump())
@@ -51,8 +58,14 @@ class ContractService:
         project = await self._project(project_id)
         old = {"name": project.name, "status": project.status}
         values = payload.model_dump(exclude_unset=True)
-        if "customer_party_id" in values:
+        if values.get("customer_party_id"):
             await self._validate_customer(values["customer_party_id"])
+        elif "customer_party_id" in values and project.business_scope != "RAILWAY":
+            raise AppError(
+                422,
+                "customer_required",
+                "Non-Railway projects require a Customer party.",
+            )
         for field, value in values.items():
             setattr(project, field, value)
         await self.repository.save(project)
@@ -101,9 +114,11 @@ class ContractService:
         loa = await self._loa(loa_id)
         if loa.status in {"COMPLETED", "CLOSED"}:
             raise AppError(409, "loa_locked", "Items cannot be added to a completed or closed LOA.")
-        unit = await self.repository.get_unit(payload.unit_id)
-        if unit is None or not unit.is_active:
+        unit = await self.repository.get_unit(payload.unit_id) if payload.unit_id else None
+        if payload.unit_id and (unit is None or not unit.is_active):
             raise AppError(422, "invalid_unit", "The selected unit is unavailable.")
+        if not payload.unit_id and not payload.unit_text:
+            raise AppError(422, "unit_required", "Provide a Unit Master or contractual UOM text.")
         values = payload.model_dump()
         line_value = money(payload.original_approved_quantity * payload.contractual_rate)
         item = LoaItem(loa_id=loa_id, original_line_value=line_value, **values)
@@ -251,6 +266,7 @@ class ContractService:
                     description=item.description,
                     hsn_code_id=item.hsn_code_id,
                     unit_id=item.unit_id,
+                    unit_text=item.unit_text,
                     original_quantity=item.original_approved_quantity,
                     positive_variation_quantity=positive,
                     negative_variation_quantity=negative,
@@ -277,6 +293,7 @@ class ContractService:
                         description=line.description,
                         hsn_code_id=line.hsn_code_id,
                         unit_id=line.unit_id,
+                        unit_text=None,
                         original_quantity=Decimal("0"),
                         positive_variation_quantity=line.quantity,
                         negative_variation_quantity=Decimal("0"),

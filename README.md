@@ -225,6 +225,9 @@ The current application includes authentication/RBAC, Master Data, Railway hiera
 Project/LOA contracts and variations, procurement and Purchase Orders, receiving,
 Supply Challans, Proforma and Tax Invoices, quotations, approved PDF/Excel document
 generation, historical document snapshots, and serialized Asset lifecycle management.
+Railway LOAs can also be uploaded as PDF or XLSX sources for controlled extraction,
+master-data mapping, human review, duplicate checking, and approval into the existing
+authoritative Project/LOA/BOQ domain.
 It also includes customer-payment receipts, controlled allocation to issued Tax Invoices,
 and derived receivable/outstanding positions.
 The authenticated application also provides an operational Alerts inbox, configurable
@@ -243,6 +246,8 @@ quantities without creating individual Asset records.
 - Python 3.14 and pip
 - Node.js 22+ and npm
 - PostgreSQL 16+ accessible locally or through the approved private network
+- Poppler (`pdftotext` and `pdftoppm`) for Railway LOA PDF extraction
+- Tesseract OCR for scanned Railway LOAs (optional locally; failed scans remain retryable)
 
 ### Backend
 
@@ -286,6 +291,14 @@ whose password is administratively reset must change their temporary password be
 business modules. The system prevents deactivation or demotion of the last active SUPER-ADMIN.
 Database migrations and backups remain controlled deployment operations and are intentionally
 not executable from the browser.
+
+Uploaded Railway LOA originals are stored outside PostgreSQL under
+`storage/documents/loa/<import-uuid>/` and are intentionally ignored by Git. The database stores
+typed import metadata, extracted/reviewed fields, BOQ rows, source links, lifecycle state, and
+audit history. Extraction never creates an authoritative LOA automatically: an ADMIN or
+SUPER-ADMIN must review unresolved mappings and explicitly approve the import. Production must
+provide durable private storage at `WCDMS_DOCUMENT_STORAGE_ROOT`, with backup and access controls
+aligned to the PostgreSQL records. Do not serve this directory as public static content.
 
 ### Frontend
 
@@ -336,5 +349,8 @@ npm run build
 - Phase 17 administration: audited one-time initial SUPER-ADMIN bootstrap, browser-based user
   lifecycle and password controls, last-active-SUPER-ADMIN protection, safe system health and
   read-only numbering visibility, plus production configuration guidance
+- Phase 20 Railway LOA intake: protected PDF/XLSX source preservation, native-text/structured
+  Excel extraction, optional OCR adapter, typed review drafts and BOQ rows, Master Data matching,
+  possible-duplicate warnings, and explicit approval through existing Project/LOA services
 - PostgreSQL migrations: additive foundations through System Administration metadata;
   reporting derives directly from existing authoritative tables without new schema

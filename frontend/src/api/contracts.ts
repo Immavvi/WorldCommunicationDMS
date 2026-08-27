@@ -10,7 +10,7 @@ export type Loa = {
   original_contract_value: string; status: string; is_active: boolean;
 };
 export type LoaItem = {
-  id: string; item_number: string; description: string; unit_id: string;
+  id: string; item_number: string; description: string; unit_id?: string; unit_text?: string;
   original_approved_quantity: string; contractual_rate: string; original_line_value: string;
 };
 export type VariationLine = {

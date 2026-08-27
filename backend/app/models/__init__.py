@@ -5,6 +5,12 @@ from app.models.billing import ProformaInvoice, ProformaInvoiceLine
 from app.models.contracts import LoaItem, LoaVariation, LoaVariationLine
 from app.models.dispatch import ChallanReceiptAllocation, SupplyChallan, SupplyChallanLine
 from app.models.invoicing import TaxInvoice, TaxInvoiceLine
+from app.models.loa_imports import (
+    RailwayLoaImport,
+    RailwayLoaImportGroup,
+    RailwayLoaImportLine,
+    RailwayLoaImportSchedule,
+)
 from app.models.master_data import (
     BankAccount,
     GstRegistration,
@@ -87,11 +93,15 @@ __all__ = [
     "PurchaseOrderLine",
     "Quotation",
     "QuotationLine",
+    "RailwayLoaImport",
+    "RailwayLoaImportLine",
     "RailwayAuthority",
     "RailwayAuthorityAddress",
     "RailwayAuthorityRole",
     "RailwayDivision",
     "RailwayLocation",
+    "RailwayLoaImportGroup",
+    "RailwayLoaImportSchedule",
     "RailwayZone",
     "Role",
     "TaxRateComponent",

@@ -29,13 +29,14 @@ type RequestOptions = RequestInit & { token?: string };
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { token, headers, ...requestOptions } = options;
+  const requestHeaders = new Headers(headers);
+  if (!(requestOptions.body instanceof FormData) && !requestHeaders.has("Content-Type")) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+  if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...requestOptions,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
+    headers: requestHeaders,
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => undefined)) as

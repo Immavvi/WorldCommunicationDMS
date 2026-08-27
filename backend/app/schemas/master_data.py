@@ -67,6 +67,7 @@ class MasterDataWrite(BaseModel):
     customer_reference: str | None = Field(default=None, max_length=255)
     specifications: dict[str, Any] | None = None
     roles: list[str] | None = None
+    aliases: list[str] | None = None
     components: dict[str, float] | None = None
     address_type: str | None = Field(default=None, max_length=20)
     label: str | None = Field(default=None, max_length=100)
@@ -82,6 +83,13 @@ class MasterDataWrite(BaseModel):
     @classmethod
     def normalize_code(cls, value: str | None) -> str | None:
         return value.strip().upper() if value else value
+
+    @field_validator("aliases")
+    @classmethod
+    def normalize_aliases(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return sorted({alias.strip() for alias in value if alias.strip()}, key=str.casefold)
 
 
 class MasterDataResponse(BaseModel):

@@ -16,3 +16,5 @@ coverage/
 /outputs/phase11/
 /outputs/phase18/
 storage/
+/.runtime/
+.vscode/wcdms-shell.zsh

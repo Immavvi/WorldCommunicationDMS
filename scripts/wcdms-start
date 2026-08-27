@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -u
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/_wcdms-common"
+
+lock="$WCDMS_RUNTIME/control.lock"
+if ! mkdir "$lock" 2>/dev/null; then
+  printf 'Another WCDMS start/stop operation is in progress.\n' >&2
+  exit 1
+fi
+trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+
+if [[ ! -x "$WCDMS_ROOT/.venv/bin/uvicorn" ]]; then
+  printf 'Backend executable missing: %s\n' "$WCDMS_ROOT/.venv/bin/uvicorn" >&2
+  exit 1
+fi
+if [[ ! -x "$WCDMS_ROOT/frontend/node_modules/.bin/vite" ]]; then
+  printf 'Frontend dependencies are missing. Run npm install in frontend/.\n' >&2
+  exit 1
+fi
+
+backend_pid="$(wcdms_read_managed_pid backend "$WCDMS_BACKEND_PID" || true)"
+frontend_pid="$(wcdms_read_managed_pid frontend "$WCDMS_FRONTEND_PID" || true)"
+
+for specification in "backend:8000:$backend_pid" "frontend:5173:$frontend_pid"; do
+  IFS=: read -r service port managed_pid <<< "$specification"
+  listener="$(wcdms_port_pid "$port")"
+  if [[ -n "$listener" && "$listener" != "$managed_pid" ]]; then
+    printf 'Cannot start WCDMS %s: port %s is occupied by unmanaged PID %s.\n' \
+      "$service" "$port" "$listener" >&2
+    exit 1
+  fi
+done
+
+started_backend=false
+if [[ -z "$backend_pid" ]]; then
+  backend_pid="$("$WCDMS_ROOT/.venv/bin/python" "$WCDMS_ROOT/scripts/_wcdms-launch.py" \
+    "$WCDMS_ROOT/backend" "$WCDMS_BACKEND_LOG" \
+    "$WCDMS_ROOT/.venv/bin/uvicorn" app.main:app --reload \
+    --host 127.0.0.1 --port 8000)"
+  printf '%s\n' "$backend_pid" > "$WCDMS_BACKEND_PID.tmp"
+  mv "$WCDMS_BACKEND_PID.tmp" "$WCDMS_BACKEND_PID"
+  started_backend=true
+fi
+
+started_frontend=false
+if [[ -z "$frontend_pid" ]]; then
+  frontend_pid="$("$WCDMS_ROOT/.venv/bin/python" "$WCDMS_ROOT/scripts/_wcdms-launch.py" \
+    "$WCDMS_ROOT/frontend" "$WCDMS_FRONTEND_LOG" \
+    "VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1" \
+    "$WCDMS_ROOT/frontend/node_modules/.bin/vite" \
+    --host 127.0.0.1 --port 5173 --strictPort)"
+  printf '%s\n' "$frontend_pid" > "$WCDMS_FRONTEND_PID.tmp"
+  mv "$WCDMS_FRONTEND_PID.tmp" "$WCDMS_FRONTEND_PID"
+  started_frontend=true
+fi
+
+failed=false
+if ! wcdms_wait_url "http://127.0.0.1:8000/api/v1/health"; then
+  printf 'Backend failed to become ready. See %s\n' "$WCDMS_BACKEND_LOG" >&2
+  failed=true
+fi
+if ! wcdms_wait_url "http://127.0.0.1:5173/"; then
+  printf 'Frontend failed to become ready. See %s\n' "$WCDMS_FRONTEND_LOG" >&2
+  failed=true
+fi
+if [[ "$failed" == true ]]; then
+  [[ "$started_frontend" == true ]] && wcdms_stop_service frontend "$WCDMS_FRONTEND_PID" 5173 >/dev/null 2>&1 || true
+  [[ "$started_backend" == true ]] && wcdms_stop_service backend "$WCDMS_BACKEND_PID" 8000 >/dev/null 2>&1 || true
+  exit 1
+fi
+
+printf 'WCDMS Backend: Running (PID %s, http://127.0.0.1:8000)\n' "$backend_pid"
+printf 'WCDMS Frontend: Running (PID %s, http://127.0.0.1:5173)\n' "$frontend_pid"

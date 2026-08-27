@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     cors_allow_origins: list[str] = Field(
         default_factory=lambda: ["http://127.0.0.1:5173", "http://localhost:5173"]
     )
+    document_storage_root: Path = PROJECT_ROOT / "storage" / "documents"
+    loa_upload_max_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",

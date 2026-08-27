@@ -1,0 +1,18 @@
+LOA Number: SANITIZED/MIXED/1
+LOA Date: 20/08/2026
+Name of Work: Sanitized mixed-source schedule work
+Contract Value: 300.00
+
+Awarded Quantities And Rates
+Schedule A-DIRECT ITEMS
+1     Direct contractual equipment     DR-01       2 Set       75.00 At Par       150.00
+Schedule Totals 150.00
+Schedule B-DETAILED ELSEWHERE
+1     View Details     GROUP-B       1 Lot       150.00 At Par       150.00
+
+Item Breakup
+Schedule B-DETAILED ELSEWHERE
+Item - 01 DETAILED GROUP
+S No. Item No Description of Item Unit Qty Rate Amount
+1  BX-01  Detailed contractual service  Each  3  50.00  150.00
+Total 150.00

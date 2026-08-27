@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.auth import AuditLog
-from app.models.master_data import Organization, Party, TermsConditionVersion
+from app.models.master_data import Organization, Party, RailwayAuthority, TermsConditionVersion
 
 
 class MasterDataRepository:
@@ -16,8 +16,8 @@ class MasterDataRepository:
 
     async def list(self, model, *, offset: int, limit: int, active: bool | None):
         statement = select(model).order_by(model.created_at.desc()).offset(offset).limit(limit)
-        if model is Party:
-            statement = statement.options(selectinload(Party.roles))
+        if model in {Party, RailwayAuthority}:
+            statement = statement.options(selectinload(model.roles))
         if active is not None:
             statement = statement.where(model.is_active == active)
         return list(await self.session.scalars(statement))
@@ -30,8 +30,8 @@ class MasterDataRepository:
 
     async def get(self, model, record_id: UUID):
         statement = select(model).where(model.id == record_id)
-        if model is Party:
-            statement = statement.options(selectinload(Party.roles))
+        if model in {Party, RailwayAuthority}:
+            statement = statement.options(selectinload(model.roles))
         return await self.session.scalar(statement)
 
     async def find_by_code(self, model, code: str):
@@ -55,6 +55,34 @@ class MasterDataRepository:
         timestamp_names = [name for name in ("created_at", "updated_at") if name in mapped_names]
         await self.session.refresh(record, attribute_names=timestamp_names)
         return record
+
+    async def find_external_references(self, record) -> list[str]:
+        target_table = record.__table__
+        references: list[str] = []
+
+        for table in target_table.metadata.tables.values():
+            for foreign_key in table.foreign_keys:
+                if foreign_key.column.table is not target_table:
+                    continue
+
+                if foreign_key.ondelete and foreign_key.ondelete.upper() == "CASCADE":
+                    continue
+
+                statement = (
+                    select(func.count())
+                    .select_from(table)
+                    .where(foreign_key.parent == record.id)
+                )
+                count = (await self.session.scalar(statement)) or 0
+
+                if count:
+                    references.append(f"{table.name}.{foreign_key.parent.name}")
+
+        return references
+
+    async def delete(self, record) -> None:
+        await self.session.delete(record)
+        await self.session.flush()
 
     def audit(
         self,

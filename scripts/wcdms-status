@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -u
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/_wcdms-common"
+
+report_service() {
+  local label="$1" service="$2" pid_file="$3" port="$4" log="$5" pid listener
+  pid="$(wcdms_read_managed_pid "$service" "$pid_file" || true)"
+  listener="$(wcdms_port_pid "$port")"
+  printf 'WCDMS %s:\n' "$label"
+  if [[ -n "$pid" && "$listener" == "$pid" ]]; then
+    printf 'Running\nPID %s\n' "$pid"
+  elif [[ -n "$pid" ]]; then
+    printf 'Starting / Not Listening\nPID %s\n' "$pid"
+  elif [[ -n "$listener" ]]; then
+    printf 'Stopped (port occupied by unmanaged PID %s)\n' "$listener"
+  else
+    printf 'Stopped\n'
+  fi
+  printf 'Port %s\nLog %s\n\n' "$port" "$log"
+}
+
+report_service Backend backend "$WCDMS_BACKEND_PID" 8000 "$WCDMS_BACKEND_LOG"
+report_service Frontend frontend "$WCDMS_FRONTEND_PID" 5173 "$WCDMS_FRONTEND_LOG"

@@ -10,6 +10,7 @@ from app.api.v1.dispatch import router as dispatch_router
 from app.api.v1.documents import router as documents_router
 from app.api.v1.health import router as health_router
 from app.api.v1.invoicing import router as invoicing_router
+from app.api.v1.loa_imports import router as loa_imports_router
 from app.api.v1.master_data import router as master_data_router
 from app.api.v1.payments import router as payments_router
 from app.api.v1.procurement import router as procurement_router
@@ -30,6 +31,7 @@ api_router.include_router(auth_router)
 api_router.include_router(billing_router)
 api_router.include_router(users_router)
 api_router.include_router(master_data_router)
+api_router.include_router(loa_imports_router)
 api_router.include_router(contracts_router)
 api_router.include_router(procurement_router)
 api_router.include_router(quotations_router)
